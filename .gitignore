@@ -1,0 +1,24 @@
+# Dependencias
+node_modules/
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build
+backend/static/assets/*.map
+
+# Entorno
+.env
+.opencode/
+_archive/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/

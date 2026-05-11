@@ -1,0 +1,52 @@
+# Calibración de servos MG996R por dedo
+# Unidades: microsegundos PWM (rango típico 500-2500)
+# MG996R típico: 1000µs = 0°, 1500µs = 90°, 2000µs = 180°
+
+fingers:
+  thumb:
+    open_pwm: 1000      # Dedo extendido (abierto)
+    closed_pwm: 2000    # Dedo flexionado (cerrado)
+    pwm_min: 800        # Límite seguro mínimo
+    pwm_max: 2200       # Límite seguro máximo
+    deadband_pwm: 15       # era 40 — mucho más sensible
+    invert: false       # false = abierto=menor PWM, cerrado=mayor PWM
+  index:
+    open_pwm: 1000
+    closed_pwm: 2000
+    pwm_min: 800
+    pwm_max: 2200
+    deadband_pwm: 15       # era 10 - para evitar stick-slip
+    invert: false
+  middle:
+    open_pwm: 1000
+    closed_pwm: 2000
+    pwm_min: 800
+    pwm_max: 2200
+    deadband_pwm: 15       # era 10
+    invert: false
+  ring:
+    open_pwm: 1000
+    closed_pwm: 2000
+    pwm_min: 800
+    pwm_max: 2200
+    deadband_pwm: 15       # era 10
+    invert: false
+  pinky:
+    open_pwm: 1000
+    closed_pwm: 2000
+    pwm_min: 800
+    pwm_max: 2200
+    deadband_pwm: 15       # era 10
+    invert: false
+  wrist:
+    open_pwm: 1000        # Revertido a original: 1000
+    closed_pwm: 2000      # Revertido a original: 2000
+    pwm_min: 800
+    pwm_max: 2200
+    deadband_pwm: 15
+    invert: false
+
+thumb_threshold_open_pwm: 1200  # Umbral para considerar pulgar "abierto" (LED matrix)
+
+safe_pose_pwm: 1500  # Posición segura por defecto (centro)
+safe_pose_fallback_ms: 2000  # Timeout sin heartbeat → safe pose

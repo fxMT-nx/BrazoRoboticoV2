@@ -1,0 +1,28 @@
+[Unit]
+# =============================================================================
+# BrazoRoboticoV2 — Flask + WebSocket
+#
+# Servidor principal del brazo robótico. Sirve la API REST, WebSocket para
+# tiempo real, y el frontend estático (React build).
+#
+# Depende de socat.service para el bridge serial.
+# =============================================================================
+Description=BrazoRoboticoV2 — Flask + WebSocket
+After=network-online.target socat.service
+Wants=socat.service
+
+[Service]
+Type=simple
+User=arduino
+WorkingDirectory=/home/arduino/brazorobotico/backend
+# Validar configuración antes de arrancar
+ExecStartPre=/usr/bin/python3 -c "import sys; sys.path.insert(0, '.'); from config import validate; validate()"
+ExecStart=/usr/bin/python3 server.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

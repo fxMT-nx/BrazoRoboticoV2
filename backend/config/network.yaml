@@ -1,0 +1,22 @@
+# Configuración de red del UNO Q
+
+server:
+  host: "0.0.0.0"
+  port: 3000
+  ssl_cert: "cert.pem"
+  ssl_key: "key.pem"
+  debug: false
+
+websocket:
+  path: "/ws"
+  ping_interval_s: 30
+
+wifi_ap:
+  ssid: "RobotHand"
+  password: "robot2026"
+  channel: 6
+  subnet: "192.168.4.0/24"
+  ip: "192.168.4.1"
+
+client_wifi:
+  ip: "192.168.31.230"  # IP del UNO Q en red doméstica

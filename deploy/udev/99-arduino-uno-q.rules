@@ -1,0 +1,22 @@
+# =============================================================================
+# Reglas udev para Arduino UNO Q (Qualcomm QRB2210)
+#
+# El UNO Q se identifica como:
+#   idVendor:  2341  (Arduino SA)
+#   idProduct: 0078  (ABX00162 — UNO Q)
+#
+# Esto otorga permisos de escritura para:
+#   - Provisioning (flasheo del STM32)
+#   - Serial Gadget (USB CDC ACM)
+#
+# Instalación:
+#   sudo cp 99-arduino-uno-q.rules /etc/udev/rules.d/
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+# =============================================================================
+
+# Arduino UNO Q — permisos amplios para provisioning y serial
+SUBSYSTEM=="usb", ATTR{idVendor}=="2341", ATTR{idProduct}=="0078", MODE="0666"
+
+# USB Gadget Serial (ttyGS0) — aparece después de configurar el gadget
+SUBSYSTEM=="tty", KERNEL=="ttyGS0", MODE="0666", GROUP="dialout"

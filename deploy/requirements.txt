@@ -1,0 +1,21 @@
+# =============================================================================
+# Dependencias Python para BrazoRoboticoV2
+#
+# Instalación: pip install -r requirements.txt
+# =============================================================================
+
+# Web framework con soporte para WebSocket y producción
+Flask>=3.0
+Flask-Sock>=0.7
+
+# Comunicación serial con STM32 via SOCAT bridge
+pyserial>=3.5
+
+# Cálculos de cinemática y transformaciones
+numpy>=1.24
+
+# Servidor WSGI production-ready (alternativa a gunicorn en Windows/ARM)
+waitress>=3.0
+
+# Configuración en YAML (network.yaml, tracking.yaml, servo_calibration.yaml)
+pyyaml>=6.0

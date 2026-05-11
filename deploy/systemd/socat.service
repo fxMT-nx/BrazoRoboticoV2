@@ -1,0 +1,25 @@
+[Unit]
+# =============================================================================
+# SOCAT bridge: TCP:7500 ↔ USB Gadget Serial (/dev/ttyGS0)
+#
+# El UNO Q expone un USB Gadget Serial que aparece como /dev/ttyGS0.
+# Socat crea un bridge TCP para que Flask pueda hablar con el STM32
+# a través del Mega sin necesidad de permisos de serial.
+#
+# Flujo: Flask → TCP:7500 → SOCAT → /dev/ttyGS0 → USB Gadget → STM32 → Mega
+# =============================================================================
+Description=SOCAT bridge: TCP:7500 ↔ USB Gadget Serial
+After=multi-user.target
+Requires=dev-ttyGS0.device
+
+[Service]
+Type=simple
+ExecStartPre=/bin/sleep 3
+ExecStart=/usr/bin/socat file:/dev/ttyGS0,raw,echo=0,b115200,crtscts=0 tcp:127.0.0.1:7500,reuseaddr
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
