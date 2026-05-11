@@ -20,3 +20,7 @@ wifi_ap:
 
 client_wifi:
   ip: "192.168.31.230"  # IP del UNO Q en red doméstica
+
+duckdns:
+  domain: "manomagica.duckdns.org"
+  token: "75249bd3-8c1c-4972-874a-d7c694c657d2"

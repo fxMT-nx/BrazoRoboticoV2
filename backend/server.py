@@ -152,6 +152,82 @@ def health():
     )
 
 
+@app.route("/api/tunnel")
+def tunnel():
+    """Devuelve la URL del Cloudflare Tunnel activo."""
+    try:
+        with open('/tmp/quick-tunnel-url.txt') as f:
+            url = f.read().strip()
+        return jsonify({'url': url, 'found': True})
+    except Exception:
+        return jsonify({'url': None, 'found': False})
+
+
+def _get_real_ip() -> str:
+    """Obtiene la IP real del servidor (no loopback, no docker).
+
+    Orden:
+      1. `ip -4 addr show` filtrando loopback y docker
+      2. Fallback a network.yaml (client_wifi.ip)
+      3. Fallback final 0.0.0.0
+    """
+    import subprocess
+    try:
+        result = subprocess.run(
+            ['ip', '-4', 'addr', 'show'],
+            capture_output=True, text=True, timeout=5
+        )
+        for line in result.stdout.split('\n'):
+            if 'inet ' in line:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    ip = parts[1].split('/')[0]
+                    # Saltar loopback y docker bridge (172.x.x.x)
+                    if not ip.startswith('127.') and not ip.startswith('172.'):
+                        return ip
+        # Fallback: primera IP no-loopback (ej. solo docker)
+        for line in result.stdout.split('\n'):
+            if 'inet ' in line:
+                parts = line.strip().split()
+                if len(parts) >= 2:
+                    ip = parts[1].split('/')[0]
+                    if not ip.startswith('127.'):
+                        return ip
+    except Exception:
+        pass
+    # Fallback: leer de network.yaml
+    try:
+        import yaml
+        with open(CONFIG_PATHS["network"]) as f:
+            cfg = yaml.safe_load(f) or {}
+        ip = cfg.get('client_wifi', {}).get('ip', '0.0.0.0')
+        if ip:
+            return ip
+    except Exception:
+        pass
+    return '0.0.0.0'
+
+
+@app.route("/api/network")
+def network():
+    """Devuelve información de red del servidor.
+
+    Obtiene la IP real de la interfaz de red (wlan0/eth0),
+    leyendo directamente del sistema. No usa gethostbyname
+    porque puede devolver 127.0.0.1 en entornos con hostname
+    no resoluble.
+    """
+    import socket
+    hostname = socket.gethostname()
+    ip = _get_real_ip()
+    return jsonify({
+        'hostname': hostname,
+        'ip': ip,
+        'port': 3000,
+        'url_local': f'https://{ip}:3000',
+    })
+
+
 @app.route("/api/config")
 def get_config():
     """Devuelve la configuración actual (solo lectura)."""
@@ -290,6 +366,16 @@ if __name__ == "__main__":
 
     app.start_time = time.time()
     init_system()
+
+    # ── Enviar IP local al STM32 (LED Matrix) ──────────────────
+    try:
+        local_ip = _get_real_ip()
+        if serial_mgr and serial_mgr.is_connected:
+            cmd = f"I{local_ip}:3000\n"
+            serial_mgr._send_raw(cmd.encode())
+            logger.info("IP enviada al STM32: %s:3000", local_ip)
+    except Exception as e:
+        logger.warning("No se pudo enviar IP al STM32: %s", e)
 
     # ── Cargar configuración de red ──────────────────────────
     try:
