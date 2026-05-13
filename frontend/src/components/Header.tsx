@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import type { AppStatus } from '../types';
 
 interface HeaderProps {
@@ -24,23 +24,6 @@ const Header: React.FC<HeaderProps> = ({
   onRecord,
   onReplay,
 }) => {
-  const [tunnelUrl, setTunnelUrl] = useState<string | null>(null);
-  const [localIp, setLocalIp] = useState<string>('...');
-
-  useEffect(() => {
-    // Obtener URL del túnel
-    fetch('/api/tunnel')
-      .then(r => r.json())
-      .then(d => { if (d.found) setTunnelUrl(d.url); })
-      .catch(() => {});
-
-    // Obtener IP local
-    fetch('/api/network')
-      .then(r => r.json())
-      .then(d => setLocalIp(d.url_local || d.ip))
-      .catch(() => {});
-  }, []);
-
   const statusColor = !connected ? '#ff5252' : status === 'running' ? '#00e676' : '#ffab00';
   const statusText = !connected
     ? 'Desconectado'
@@ -72,16 +55,11 @@ const Header: React.FC<HeaderProps> = ({
             </span>
           )}
         </div>
-        {tunnelUrl && (
-          <div className="tunnel-url">
-            🌐 <a href={tunnelUrl} target="_blank" rel="noopener noreferrer">{tunnelUrl}</a>
-          </div>
-        )}
       </div>
 
       <div className="header-actions">
         {status !== 'running' ? (
-          <button className="btn btn-start" onClick={onStart} disabled={!connected}>
+          <button className="btn btn-start" onClick={onStart}>
             ▶ Iniciar
           </button>
         ) : (

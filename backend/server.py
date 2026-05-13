@@ -154,13 +154,11 @@ def health():
 
 @app.route("/api/tunnel")
 def tunnel():
-    """Devuelve la URL del Cloudflare Tunnel activo."""
-    try:
-        with open('/tmp/quick-tunnel-url.txt') as f:
-            url = f.read().strip()
-        return jsonify({'url': url, 'found': True})
-    except Exception:
-        return jsonify({'url': None, 'found': False})
+    """Devuelve la URL permanente del túnel Cloudflare."""
+    return jsonify({
+        'url': 'https://brazo.nxserve.org:3000',
+        'found': True
+    })
 
 
 def _get_real_ip() -> str:
@@ -367,15 +365,12 @@ if __name__ == "__main__":
     app.start_time = time.time()
     init_system()
 
-    # ── Enviar IP local al STM32 (LED Matrix) ──────────────────
-    try:
-        local_ip = _get_real_ip()
-        if serial_mgr and serial_mgr.is_connected:
-            cmd = f"I{local_ip}:3000\n"
-            serial_mgr._send_raw(cmd.encode())
-            logger.info("IP enviada al STM32: %s:3000", local_ip)
-    except Exception as e:
-        logger.warning("No se pudo enviar IP al STM32: %s", e)
+    # ── Enviar dominio al STM32 (LED Matrix) ──────────────────
+    domain = "brazo.nxserve.org"
+    if serial_mgr and serial_mgr.is_connected:
+        cmd = f"I{domain}\n"
+        serial_mgr._send_raw(cmd.encode())
+        logger.info("Dominio enviado al STM32: %s", domain)
 
     # ── Cargar configuración de red ──────────────────────────
     try:

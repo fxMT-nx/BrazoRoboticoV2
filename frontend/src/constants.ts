@@ -1,6 +1,6 @@
 import type { FingerName } from './types';
 
-export const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}:3000/ws`;
+export const WS_URL = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.hostname}${window.location.port ? ':' + window.location.port : ''}/ws`;
 export const EMA_ALPHA = 0.25;
 export const SEND_INTERVAL_MS = 50;
 export const CHART_DURATION_MS = 30000;
