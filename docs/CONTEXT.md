@@ -40,12 +40,12 @@ Los 5 dedos se dividen en dos tipos: **Thumb** (pulgar, servo 0) con estrategia 
 Cada uno de los 5 actuadores de los dedos. 1 DOF (grado de libertad) por Finger, controlado por un servo MG996R. La muñeca (Wrist) es el sexto servo pero no se considera un "dedo".
 | Índice | Dedo / Servo | Nombre canónico | Pin Mega | PWM open | PWM closed |
 |--------|-------------|-----------------|----------|----------|------------|
-| 0 | Pulgar | Thumb | D3 | 1000 µs | 2000 µs |
-| 1 | Índice | Index | D5 | 1000 µs | 2000 µs |
-| 2 | Medio | Middle | D6 | 1000 µs | 2000 µs |
-| 3 | Anular | Ring | D9 | 1000 µs | 2000 µs |
-| 4 | Meñique | Pinky | D10 | 1000 µs | 2000 µs |
-| 5 | Muñeca | Wrist | D11 | 1000 µs | 2000 µs |
+| 0 | Pulgar | Thumb | D2 | 1000 µs | 2000 µs |
+| 1 | Índice | Index | D3 | 1000 µs | 2000 µs |
+| 2 | Medio | Middle | D4 | 1000 µs | 2000 µs |
+| 3 | Anular | Ring | D5 | 1000 µs | 2000 µs |
+| 4 | Meñique | Pinky | D6 | 1000 µs | 2000 µs |
+| 5 | Muñeca | Wrist | D7 | 1000 µs | 2000 µs |
 _Evitar_: dedo genérico (usar Finger o el nombre específico)
 
 **FingerMapper**:
@@ -132,7 +132,7 @@ _Evitar_: detección
 Arduino UNO Q (ABX00162) — placa principal del sistema. Contiene dos chips: Qualcomm QRB2210 (Debian Linux, aplicación principal) y STM32U585 (bridge serial + LED Matrix). Expone USB Gadget Serial como `/dev/ttyGS0` para comunicación con el exterior.
 
 **Wrist (Muñeca)**:
-Servo 5 (índice 5, pin D11 del Mega). Controla flexión/extensión vertical de la muñeca robótica. No se cuenta como "dedo" en la LED Matrix ni en la UI de conteo. El ángulo se calcula mediante dos métodos:
+Servo 5 (índice 5, pin D7 del Mega). Controla flexión/extensión vertical de la muñeca robótica. No se cuenta como "dedo" en la LED Matrix ni en la UI de conteo. El ángulo se calcula mediante dos métodos:
 1. **Principal**: Green dot tracking en el antebrazo — `findGreenDot()` detecta un marcador verde físico y calcula el ángulo de muñeca por desplazamiento del punto.
 2. **Fallback**: Cálculo 2D desde landmarks — atan2 entre el centro de la palma y la landmark 0 (wrist) de MediaPipe.
 Incluye auto-calibración: observa el rango mínimo/máximo de `wrist_raw` en vivo y estira al rango completo [0, 1]. EMA smoothing con alpha 0.15.

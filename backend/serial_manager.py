@@ -101,7 +101,7 @@ class SerialManager:
         self.reconnect_attempts: int = 10
         self.reconnect_delay_s: float = 0.5
         self.heartbeat_interval_ms: int = 500
-        self.heartbeat_timeout_ms: int = 2000
+        self.heartbeat_timeout_ms: int = 86400000   # 24h — nunca timeout durante sesión
         self.safe_pose_pwm: int = 1500
         self.debug_log_every_n: int = 10
 
@@ -420,15 +420,9 @@ class SerialManager:
                 elapsed = time.time() - self._last_ack_time
                 if elapsed > self.heartbeat_timeout_ms / 1000.0:
                     logger.warning(
-                        "Heartbeat timeout — %.1fs sin respuesta. Ejecutando safe pose.",
+                        "Heartbeat timeout — %.1fs sin respuesta.",
                         elapsed,
                     )
-                    try:
-                        self.send_safe_pose()
-                    except Exception:
-                        logger.exception("Error ejecutando safe pose por heartbeat timeout")
-                        # Resetear timer para evitar spam de safe pose
-                        self._last_ack_time = time.time()
 
     def _load_config(self, config_path: str) -> None:
         """Carga configuración serial desde archivo YAML.

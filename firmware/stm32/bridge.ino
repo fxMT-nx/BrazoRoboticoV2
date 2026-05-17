@@ -9,17 +9,17 @@
  * mostrar el dominio DuckDNS en scroll horizontal.
  *
  * ─── Arquitectura ──────────────────────────────────────────────────────────
- *   QRB2210 (Flask) → USB CDC ACM → STM32 (Serial) → Serial1 (USART1 D0/D1)
+ *   QRB2210 (Flask) → SOCAT → /dev/ttyHS1 → STM32 Serial2 (LPUART1) → Serial1 (USART1 D0/D1)
  *   → Mega 2560 (Serial1) → PWM → Servos MG996R ×6
  *
  *   En detalle:
- *   Flask → TCP:7500 → SOCAT → /dev/ttyGS0 → USB Gadget → STM32 Serial
+ *   Flask → TCP:7500 → SOCAT → /dev/ttyHS1 → LPUART1 → STM32 Serial2
  *   → Serial1 (D0/D1, USART1, 115200 baud) → Mega Serial1
  *
  * ─── Mapeo Serial del STM32U585 ────────────────────────────────────────────
- *   Serial  = Serial2 = LPUART1 → USB CDC ACM (desde QRB2210 vía SOCAT)
- *   Serial1 = USART1 → pines D0 (RX) y D1 (TX) del header → Mega Serial1
- *   Serial2 = LPUART1 (alias, no usar — compite con el router)
+ *   Serial  = USB CDC ACM              → Debug por USB (cuando el PC está conectado)
+ *   Serial1 = USART1 (D0/D1)           → Comunicación con Arduino Mega 2560
+ *   Serial2 = LPUART1 = ttyHS1         → Comunicación con Qualcomm QRB2210 (Flask vía SOCAT)
  *
  * ─── Protocolo V2 ──────────────────────────────────────────────────────────
  *   F<idx> <pwm_us>\n  — Command: mueve el servo idx al PWM especificado
@@ -51,6 +51,9 @@
 
 #include <ArduinoGraphics.h>
 #include <Arduino_LED_Matrix.h>
+#include <Wire.h>
+
+#define MEGA_I2C_ADDR 0x08
 
 // ─── Instancia global de la LED Matrix ────────────────────────────────────
 Arduino_LED_Matrix matrix;
@@ -257,6 +260,21 @@ static void processByte(const char c) {
                 const int pwm = constrain(pwm_raw, PWM_MIN, PWM_MAX);
                 servo_pwm[parse_idx] = pwm;
                 last_cmd_time = millis();
+
+                // ── Reenviar comando completo por I2C al Mega ──
+                // Envía "F<idx> <pwm>\n" como una transacción Wire.
+                Wire.beginTransmission(MEGA_I2C_ADDR);
+                Wire.write('F');
+                Wire.write('0' + parse_idx);
+                Wire.write(' ');
+                char pwm_str[8];
+                itoa(pwm, pwm_str, 10);
+                for (char* p = pwm_str; *p; p++) {
+                    Wire.write(*p);
+                }
+                Wire.write('\n');
+                Wire.endTransmission();
+
                 if (debug_mode) {
                     Serial.print("F");
                     Serial.print(parse_idx);
@@ -277,21 +295,21 @@ static void processByte(const char c) {
 // ══════════════════════════════════════════════════════════════════════════
 
 static void drainSerialToBuffer(void) {
-    while (Serial.available() > 0) {
+    while (Serial2.available() > 0) {                                        // Serial2 = LPUART1 = ttyHS1
         const uint8_t next = (rx_head + 1) % RX_BUF_SIZE;
         if (next != rx_tail) {
-            rx_buffer[rx_head] = static_cast<char>(Serial.read());
+            rx_buffer[rx_head] = static_cast<char>(Serial2.read());
             rx_head = next;
         } else {
             rx_tail = (rx_tail + 1) % RX_BUF_SIZE;
-            rx_buffer[rx_head] = static_cast<char>(Serial.read());
+            rx_buffer[rx_head] = static_cast<char>(Serial2.read());
             rx_head = (rx_head + 1) % RX_BUF_SIZE;
         }
     }
 }
 
 static void processSerialInput(void) {
-    drainSerialToBuffer();
+    drainSerialToBuffer();             // drena Serial2 (LPUART1 = ttyHS1 = datos desde Flask)
     while (rx_tail != rx_head) {
         const char c = rx_buffer[rx_tail];
         rx_tail = (rx_tail + 1) % RX_BUF_SIZE;
@@ -321,12 +339,14 @@ static void updateDisplay(void) {
 // ══════════════════════════════════════════════════════════════════════════
 
 void setup() {
-    Serial.begin(SERIAL_BAUD);
-    Serial1.begin(MEGA_BAUD);
+    Serial2.begin(SERIAL_BAUD);        // LPUART1 = ttyHS1 ← datos desde Flask vía SOCAT
+    Serial1.begin(MEGA_BAUD);           // USART1 D0/D1 → Mega 2560
 
-    const unsigned long usb_deadline = millis() + 3000;
-    while (!Serial && millis() < usb_deadline) {
-    }
+    Wire.begin();                       // I2C Master → Mega Slave (addr 0x08)
+
+    // No bloquear esperando USB CDC ACM — en modo autónomo no hay USB conectado
+    // const unsigned long usb_deadline = millis() + 3000;
+    // while (!Serial && millis() < usb_deadline) {}
 
     matrix.begin();
     drawDomain();

@@ -10,7 +10,7 @@
 [![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python)](https://python.org)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
 [![MediaPipe](https://img.shields.io/badge/MediaPipe-Hands-FF6D00)](https://developers.google.com/mediapipe)
-[![WebSocket](https://img.shields.io/badge/WebSocket-Flask--Sock-000000)](https://flask-sock.readthedocs.io/)
+[![Dominio](https://img.shields.io/badge/Dominio-nxserve.org-0055FF)](https://brazo.nxserve.org)
 
 Sistema de control de un brazo robótico articulado de **6 grados de libertad** (5 falanges + muñeca) accionados por servomotores **MG996R**, mediante **visión por computador en tiempo real**. La cinemática del brazo replica los movimientos de la mano humana capturados a través de una cámara web convencional y procesados con **MediaPipe.js** en el navegador.
 
@@ -123,7 +123,7 @@ flowchart TD
         PARSER["Parser de comandos<br/>F&lt;idx&gt; &lt;pwm&gt;\\n"]
         TRAP["Aceleración trapezoidal<br/>Movimiento suave"]
         WD["Watchdog Heartbeat<br/>2.5s timeout → safe pose"]
-        PWM["PWM → Servos<br/>D3, D5, D6, D9, D10, D11"]
+        PWM["PWM → Servos<br/>D2, D3, D4, D5, D6, D7"]
         
         PARSER --> TRAP
         TRAP --> PWM
@@ -131,12 +131,12 @@ flowchart TD
     end
 
     subgraph Servos["⚙️ MG996R ×6"]
-        T["👍 Pulgar<br/>D3"]
-        I["☝️ Índice<br/>D5"]
-        M["🖕 Corazón<br/>D6"]
-        R["💍 Anular<br/>D9"]
-        P["🤙 Meñique<br/>D10"]
-        W["↕️ Muñeca<br/>D11"]
+    T["👍 Pulgar<br/>D2"]
+    I["☝️ Índice<br/>D3"]
+    M["🖕 Corazón<br/>D4"]
+    R["💍 Anular<br/>D5"]
+    P["🤙 Meñique<br/>D6"]
+    W["↕️ Muñeca<br/>D7"]
     end
 
     USUARIO -->|"ve"| CAM
@@ -199,12 +199,12 @@ flowchart TD
 
 | Servo | Dedo | Pin Mega | PWM abierto | PWM cerrado | Rango seguro |
 |:-----:|------|:--------:|:-----------:|:-----------:|:------------:|
-| 0 | **Pulgar** (Thumb) | D3 | 1000 µs | 2000 µs | 800–2200 µs |
-| 1 | **Índice** (Index) | D5 | 1000 µs | 2000 µs | 800–2200 µs |
-| 2 | **Corazón** (Middle) | D6 | 1000 µs | 2000 µs | 800–2200 µs |
-| 3 | **Anular** (Ring) | D9 | 1000 µs | 2000 µs | 800–2200 µs |
-| 4 | **Meñique** (Pinky) | D10 | 1000 µs | 2000 µs | 800–2200 µs |
-| 5 | **Muñeca** (Wrist) | D11 | 1000 µs | 2000 µs | 800–2200 µs |
+| 0 | **Pulgar** (Thumb) | D2 | 1000 µs | 2000 µs | 800–2200 µs |
+| 1 | **Índice** (Index) | D3 | 1000 µs | 2000 µs | 800–2200 µs |
+| 2 | **Corazón** (Middle) | D4 | 1000 µs | 2000 µs | 800–2200 µs |
+| 3 | **Anular** (Ring) | D5 | 1000 µs | 2000 µs | 800–2200 µs |
+| 4 | **Meñique** (Pinky) | D6 | 1000 µs | 2000 µs | 800–2200 µs |
+| 5 | **Muñeca** (Wrist) | D7 | 1000 µs | 2000 µs | 800–2200 µs |
 
 ### 3.3 Cableado UNO Q ↔ Mega 2560
 
@@ -941,8 +941,9 @@ sudo systemctl restart robot-hand.service
 ### 7.6 Diagnóstico rápido
 
 ```bash
-# 1. Healthcheck HTTP
-curl -k https://192.168.31.12:3000/api/health
+# 1. Healthcheck HTTP (vía dominio o IP local)
+curl -k https://brazo.nxserve.org/api/health
+# curl -k http://brazorobotico.local:3000/api/health   # mDNS local
 
 # 2. Ver tráfico serial en vivo
 screen /dev/ttyACM0 115200
@@ -954,6 +955,24 @@ echo -n "F0 1500\n" > /dev/ttyACM0
 echo -n "D\n" > /dev/ttyACM0   # Toggle debug on/off
 ```
 
+### 7.7 Acceso por dominio
+
+El sistema es accesible a través de un **dominio personalizado** sin necesidad de recordar puertos ni IPs:
+
+| Método | URL | Descripción |
+|--------|-----|-------------|
+| **Dominio principal** | `https://brazo.nxserve.org` | Acceso permanente vía Cloudflare Tunnel (sin puerto) |
+| **mDNS local** | `http://brazorobotico.local:3000` | Acceso en red local sin configuración DNS |
+| **IP local** | `http://<ip-uno-q>:3000` | IP que tenga el UNO Q en cada red (vía DHCP) |
+
+**Infraestructura de red:**
+
+- **Cloudflare Tunnel** (`cloudflared`): Tuneliza el tráfico HTTPS desde `brazo.nxserve.org` hasta el UNO Q. No necesita abrir puertos en el router, ni DuckDNS, ni Quick Tunnel.
+- **Conexión permanente**: El túnel es persistente, no requiere reinicios ni comandos manuales.
+- **LED Matrix**: La matriz de LEDs del STM32 muestra el dominio `brazo.nxserve.org` como referencia visual.
+- **mDNS** (Avahi/Bonjour): El UNO Q se anuncia como `brazorobotico.local` para acceso local sin necesidad de conocer la IP.
+- **IP local**: Varía según la red donde esté conectado el UNO Q. Usar mDNS o consultar la IP DHCP asignada.
+
 ---
 
 ## 8. Referencia Rápida
@@ -962,10 +981,12 @@ echo -n "D\n" > /dev/ttyACM0   # Toggle debug on/off
 
 | URL | Descripción |
 |-----|-------------|
-| `https://<ip-uno-q>:3000` | Interfaz web principal |
-| `https://<ip-uno-q>:3000/api/health` | Healthcheck del sistema |
-| `https://<ip-uno-q>:3000/api/config` | Configuración (solo lectura) |
-| `wss://<ip-uno-q>:3000/ws` | WebSocket para tracking |
+| `https://brazo.nxserve.org` | **Acceso principal** — dominio permanente sin puerto |
+| `http://brazorobotico.local:3000` | Acceso local vía mDNS (sin Internet) |
+| `http://<ip-uno-q>:3000` | Acceso por IP local (varía según la red) |
+| `https://brazo.nxserve.org/api/health` | Healthcheck del sistema |
+| `https://brazo.nxserve.org/api/config` | Configuración (solo lectura) |
+| `wss://brazo.nxserve.org/ws` | WebSocket para tracking |
 
 ### Estructura del repositorio
 

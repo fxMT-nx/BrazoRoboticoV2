@@ -66,6 +66,10 @@ tracking_active = False
 current_angles: list[int] = [1500, 1500, 1500, 1500, 1500, 1500]
 frame_count = 0
 
+# ── Debug serial ──────────────────────────────────────────────────────
+serial_debug_log: list[dict] = []   # buffer de últimos comandos enviados
+serial_commands_sent: int = 0        # contador total de comandos
+
 # ── Inicialización ────────────────────────────────────────────────────
 
 
@@ -148,6 +152,8 @@ def health():
             "angles": current_angles,
             "frame_count": frame_count,
             "uptime_s": round(time.time() - app.start_time, 2),
+            "serial_commands_sent": serial_commands_sent,
+            "serial_debug_len": len(serial_debug_log),
         }
     )
 
@@ -246,6 +252,16 @@ def get_config():
     return jsonify(configs)
 
 
+# ── Debug Serial ──────────────────────────────────────────────────────
+
+
+@app.route("/api/debug/serial")
+def debug_serial():
+    """Devuelve los últimos comandos seriales enviados (buffer circular)."""
+    global serial_debug_log
+    return jsonify(serial_debug_log[-50:])
+
+
 # ── WebSocket Handler ─────────────────────────────────────────────────
 
 
@@ -322,6 +338,14 @@ def ws_handler(ws):
                 ):
                     for i, pwm in enumerate(pwm_values):
                         serial_mgr.send_command(i, pwm)
+                        # ── Debug serial: registrar comando enviado ──
+                        global serial_debug_log, serial_commands_sent
+                        serial_debug_log.append({
+                            'time': time.time(),
+                            'cmd': f"F{i} {pwm}",
+                            'pwm': pwm,
+                        })
+                        serial_commands_sent += 1
 
                 # Responder al frontend
                 ws.send(
@@ -355,6 +379,36 @@ def ws_handler(ws):
         tracking_active = False
         logger.info("Cliente WebSocket desconectado")
         _send_safe_pose()
+
+
+# ── Endpoint de prueba para mover servo directamente ────────────────
+
+
+@app.route("/api/test/move/<int:servo>/<int:pwm>")
+def test_move(servo: int, pwm: int):
+    """Endpoint de prueba: mueve un servo a un PWM específico.
+
+    Args:
+        servo: Índice del servo (0-5)
+        pwm: PWM en microsegundos (500-2500)
+
+    Ejemplo: GET /api/test/move/0/2000 → pulgar a 2000µs
+    """
+    if servo < 0 or servo > 5:
+        return jsonify({'error': 'Servo debe ser 0-5'}), 400
+    if pwm < 500 or pwm > 2500:
+        return jsonify({'error': 'PWM debe ser 500-2500'}), 400
+
+    if serial_mgr and serial_mgr.is_connected:
+        success = serial_mgr.send_command(servo, pwm)
+        return jsonify({
+            'servo': servo,
+            'pwm': pwm,
+            'sent': success,
+            'connected': serial_mgr.is_connected
+        })
+    else:
+        return jsonify({'error': 'SerialManager no conectado', 'connected': False}), 503
 
 
 # ── Main ──────────────────────────────────────────────────────────────

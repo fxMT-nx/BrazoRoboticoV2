@@ -22,12 +22,12 @@
  *   - Monitor USB para debug con toggle
  *
  * Pines:
- *   D3  ─ Servo 0  ─ Pulgar  (Thumb)
- *   D5  ─ Servo 1  ─ Índice  (Index)
- *   D6  ─ Servo 2  ─ Medio   (Middle)
- *   D9  ─ Servo 3  ─ Anular  (Ring)
- *   D10 ─ Servo 4  ─ Meñique (Pinky)
- *   D11 ─ Servo 5  ─ Muñeca  (Wrist)
+ *   D7  ─ Servo 0  ─ Pulgar  (Thumb)
+ *   D6  ─ Servo 1  ─ Índice  (Index)
+ *   D5  ─ Servo 2  ─ Corazón (Middle)
+ *   D4  ─ Servo 3  ─ Anular  (Ring)
+ *   D3  ─ Servo 4  ─ Meñique (Pinky)
+ *   D2  ─ Servo 5  ─ Muñeca  (Wrist)
  *
  * Serial1: RX1=D19, TX1=D18  — comunicación con UNO Q
  * Serial:  USB              — debug/monitor por terminal
@@ -64,7 +64,7 @@
 //  PINES DE LOS SERVOS
 // ═══════════════════════════════════════════════════════════
 
-const uint8_t SERVO_PINS[NUM_SERVOS] = {3, 5, 6, 9, 10, 11};
+const uint8_t SERVO_PINS[NUM_SERVOS] = {7, 6, 5, 4, 3, 2};
 
 // ═══════════════════════════════════════════════════════════
 //  ESTADO GLOBAL DE LOS SERVOS
@@ -119,6 +119,10 @@ unsigned long last_step_ms = 0;      // Último paso de interpolación
 // Se activa enviando 'M' por USB (sin newline).
 
 bool monitor_mode = false;
+
+bool debug_mode = true;             // Debug por Serial USB activo por defecto
+unsigned long last_debug_print = 0; // Último print de debug
+int frame_count = 0;               // Contador de frames
 
 // ═══════════════════════════════════════════════════════════
 //  SETUP
@@ -179,9 +183,10 @@ void loop() {
     }
   }
 
-  // ── Leer Serial (USB debug) → passthrough a Serial1 ───
-  // Permite enviar comandos manuales desde el monitor serie
-  // para depuración sin necesidad del UNO Q.
+  // ── Leer Serial (USB debug) → parsear + passthrough a Serial1 ───
+  // Los comandos recibidos por USB se procesan DIRECTAMENTE (para desarrollo
+  // vía bridge TCP→serial) y además se reenvían a Serial1 (por si hay un
+  // loopback o un segundo nodo escuchando en Serial1).
   while (Serial.available() > 0) {
     char c = Serial.read();
 
@@ -190,10 +195,14 @@ void loop() {
       monitor_mode = !monitor_mode;
       Serial.print(F("Monitor: "));
       Serial.println(monitor_mode ? F("ON") : F("OFF"));
-    } else {
-      // Cualquier otro carácter se reenvía a Serial1
-      Serial1.write(c);
+      continue;
     }
+
+    // Procesar comando directamente desde USB
+    parse_char(c);
+
+    // Forward a Serial1 por si hay loopback
+    Serial1.write(c);
   }
 
   // ── Paso de interpolación (movimiento suave) ──────────
@@ -205,6 +214,21 @@ void loop() {
 
   // ── Watchdog ──────────────────────────────────────────
   check_watchdog();
+
+  // ── Debug periódico (cada ~100 ciclos) ────────────────
+  frame_count++;
+  if (debug_mode && (millis() - last_debug_print > 2000)) {
+    last_debug_print = millis();
+    Serial.print(F("STATUS "));
+    for (int i = 0; i < NUM_SERVOS; i++) {
+      Serial.print(F("S"));
+      Serial.print(i);
+      Serial.print(F(":"));
+      Serial.print(current_pwm[i]);
+      if (i < NUM_SERVOS - 1) Serial.print(F(" "));
+    }
+    Serial.println();
+  }
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -228,6 +252,14 @@ void parse_char(char c) {
     last_command_ms = millis();        // ADR-0002: heartbeat resetea watchdog
     pstate = WAITING_F;                // Reset del parser
     cmd_pos = 0;
+    return;
+  }
+
+  // ── Toggle debug: 'D' ─────────────────────────────────
+  if (c == 'D') {
+    debug_mode = !debug_mode;
+    Serial.print(F("DEBUG: "));
+    Serial.println(debug_mode ? F("ON") : F("OFF"));
     return;
   }
 
@@ -276,6 +308,12 @@ void parse_char(char c) {
         cmd_pwm = atoi(cmd_buffer);                 // ASCII → entero
         cmd_pwm = constrain(cmd_pwm, PWM_MIN_US, PWM_MAX_US);  // Clampeo seguro
         target_pwm[cmd_idx] = cmd_pwm;              // Actualizar target
+        if (debug_mode) {
+          Serial.print(F("CMD F"));
+          Serial.print(cmd_idx);
+          Serial.print(F(" "));
+          Serial.println(cmd_pwm);
+        }
         last_command_ms = millis();                  // ADR-0002: comando resetea watchdog
       }
       pstate = WAITING_F;
@@ -317,6 +355,12 @@ void update_servos() {
       // Snap directo para evitar micro-oscilaciones
       current_pwm[i] = target_pwm[i];
       velocity[i] = 0;
+      if (debug_mode && diff != 0) {
+        Serial.print(F("OK S"));
+        Serial.print(i);
+        Serial.print(F("="));
+        Serial.println(current_pwm[i]);
+      }
     } else {
       // ── En movimiento: calcular perfil trapezoidal ─────────
       int direction = (diff > 0) ? 1 : -1;
