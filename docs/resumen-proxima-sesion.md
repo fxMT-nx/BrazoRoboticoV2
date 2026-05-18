@@ -1,74 +1,118 @@
-# Resumen para próxima sesión — BrazoRoboticoV2
+# 🦾 BrazoRoboticoV2 — Memoria del Proyecto
 
-> **Fecha:** Lunes, 18 de mayo de 2026  
-> **Versión actual:** Beta v2.3 — "OTG USB + Calibración física"  
-> **Estado:** ✅ SISTEMA COMPLETAMENTE OPERATIVO
+> **Última actualización:** 19 de mayo de 2026  
+> **Versión:** 2.3 (Beta)  
+> **Estado:** ✅ COMPLETAMENTE OPERATIVO
 
 ---
 
-## 1. RESUMEN DE LA SESIÓN
+## 1. Resumen Ejecutivo
 
-### 🆘 Rescate del UNO Q
-El UNO Q estaba **petado** (no arrancaba). Se recuperó vía **modo EDL** (jumper de recovery):
-1. Jumper en pines EDL → conectado por USB → detectado como `05c6:9008`
-2. Descargado `arduino-flasher-cli` y flasheada imagen Debian de fábrica
-3. Configurado WiFi (Fephone), SSH, contraseña sudo
+Brazo robótico articulado de **6 GDL** (5 dedos + muñeca) controlado por visión artificial en tiempo real con MediaPipe.js. Un **Arduino UNO Q** (Qualcomm QRB2210) corre Flask con el **PoseMapper**, que convierte landmarks 3D a PWM. Los comandos viajan por **USB OTG** a un **Arduino Mega 2560** que mueve 6 servos **MG996R**.
 
-### 🔧 Infraestructura instalada
-| Servicio | Descripción |
-|----------|-------------|
-| `robot-hand.service` | Flask + WebSocket + PoseMapper |
-| `socat-mega.service` | SOCAT bridge: TCP:7500 ↔ Mega 2560 por USB OTG |
-| `cloudflared-tunnel.service` | Cloudflare Tunnel → `brazo.nxserve.org` |
-| `usb-host-mode.service` | Fuerza modo host USB al arranque |
+**Demo en vivo:** [https://brazo.nxserve.org](https://brazo.nxserve.org) (Cloudflare Tunnel)
 
-### 📡 Ruta de comunicación definitiva
+## 2. Stack Tecnológico
+
+| Capa | Tecnología |
+|------|-----------|
+| **Frontend** | React 18 + TypeScript + Vite + Three.js + Recharts |
+| **Tracking** | MediaPipe.js HandLandmarker (21 landmarks 3D) |
+| **Backend** | Python 3.13 + Flask 3.1 + Flask-Sock |
+| **Bridge** | SOCAT (TCP:7500 ↔ /dev/ttyACM0) |
+| **Firmware Mega** | Arduino C++ (Servo.h, watchdog, trapezoidal) |
+| **Firmware STM32** | Arduino C++ (LED Matrix, legacy) |
+| **Infra** | Cloudflare Tunnel, systemd, Debian Linux |
+| **Acceso** | `https://brazo.nxserve.org` (Cloudflare Tunnel) |
+
+## 3. Arquitectura de Comunicación
+
 ```
-https://brazo.nxserve.org → Cloudflare Tunnel → UNO Q
-  → Flask (:3000) → TCP:7500 → SOCAT
-  → /dev/ttyACM0 (USB OTG) → Mega 2560
-  → PWM → Servos MG996R ×6
+👋 Mano → 🎥 Cámara → 🧠 MediaPipe.js → 🌐 WebSocket
+  → 🐍 Flask (UNO Q) → 🔗 SOCAT → 🔌 USB OTG
+  → 🔌 Mega 2560 → ⚙️ Servos MG996R ×6
 ```
 
-El STM32 bridge se eliminó de la ruta de comunicación. El Mega se conecta directamente por USB OTG al UNO Q.
+**Protocolo serie:** `F<idx> <pwm_us>\n` @ 115200 baud  
+**Heartbeat:** `H\n` cada 500ms (watchdog Mega: 2500ms)  
+**Safe pose:** Al detener/desconectar, cada servo va a su `open_pwm` calibrado
 
-### 🔌 Conexiones físicas
-- **UNO Q** → Alimentación externa 6.5-12V + USB-C (OTG) al Mega
-- **Mega 2560** → Alimentación externa 5V/10A + Sensor Shield V2.0
-- **Mega → UNO Q**: Solo USB (con adaptador OTG). No usa UART (D0/D1)
+## 4. Pinout de Servos
 
-### 🦾 Calibración de servos (por dedo)
-| Servo | Abrir (µs) | Cerrar (µs) | Límites |
-|:-----:|:----------:|:-----------:|:-------:|
-| 0 - Pulgar | 2000 | 800 | 700-2100 |
-| 1 - Índice | 2000 | 600 | 500-2100 |
-| 2 - Corazón | 1700 | 600 | 500-1800 |
-| 3 - Anular | 1900 | 600 | 500-2000 |
-| 4 - Meñique | 1900 | 600 | 500-2000 |
-| 5 - Muñeca | 2000 | 600 | 700-2000 |
+| Servo | Dedo | Pin Mega | Abierto 🖐️ | Cerrado ✊ |
+|:-----:|------|:--------:|:----------:|:----------:|
+| 0 | 👍 Pulgar | **D7** | 2000 µs | 800 µs |
+| 1 | ☝️ Índice | **D6** | 2000 µs | 600 µs |
+| 2 | 🖕 Corazón | **D5** | 1700 µs | 600 µs |
+| 3 | 💍 Anular | **D4** | 1900 µs | 600 µs |
+| 4 | 🤙 Meñique | **D3** | 1900 µs | 600 µs |
+| 5 | ↕️ Muñeca | **D2** | 2000 µs | 600 µs |
 
-**Safe pose:** 1300 µs (centro de muñeca)
+> ⚠️ Orden en firmware: `SERVO_PINS[] = {7, 6, 5, 4, 3, 2}` (inverso a la lectura intuitiva)
 
-### 🧠 Mejoras en PoseMapper
-- **Pulgar**: Sensibilidad aumentada (rango ±0.01 → 0-1)
-- **Dedos largos**: Ganancia 1.5x para aprovechar todo el rango PWM
-- **Muñeca**: Cambiada de flexión vertical a **rotación** (usa diferencia de profundidad Z entre índice y meñique)
+## 5. Alimentación
 
-### 📋 Problemas conocidos
-1. **Calibración**: Si se cambia la posición de la cámara o la iluminación, reajustar sensibilidad del pulgar en `pose_mapper.py`
-2. **Watchdog en Mega**: Se dispara si no hay heartbeats. Normal durante arranque.
-3. **USB OTG**: Al reconectar el Mega, el modo host USB puede no activarse. El servicio `usb-host-mode.service` lo fuerza.
-4. **Heartbeat timeout**: SerialManager no recibe ACK del Mega (el Mega responde por Serial1, no por USB). No afecta funcionalidad.
+| Línea | Tensión | Corriente |
+|-------|:-------:|:---------:|
+| Servos + Mega | **5 V** | **10 A+** |
+| UNO Q (VIN) | 6.5–12 V | 2 A |
+| GND | Común entre ambas fuentes | — |
 
-### 🔐 Acceso
-| Método | URL |
-|--------|-----|
-| **Dominio** | `https://brazo.nxserve.org` |
-| **SSH** | `ssh arduino@10.222.228.203` (pass: `arduino`) |
-| **Healthcheck** | `https://brazo.nxserve.org/api/health` |
+## 6. Historial de Versiones
 
-### 📌 Próximos pasos sugeridos
-1. Ajustar calibración fina de cada dedo si es necesario
-2. Probar grabación/reproducción (ReplayControls)
-3. Considerar migrar a producción con Gunicorn/Waitress
-4. Generar certificados SSL para HTTPS local
+| Versión | Fecha | Cambios |
+|:-------:|:-----:|---------|
+| **2.3** | 19/05/26 | Auditoría y limpieza del repo. Safe pose inteligente al detener. Servicios systemd corregidos. Documentación sincronizada. Eliminados 18 sketches huérfanos y 36MB de binarios. |
+| **2.3** | 18/05/26 | Migración a USB OTG. Rescate del UNO Q via EDL. Calibración física de cada servo. Muñeca rotacional por profundidad Z. Cloudflare Tunnel operativo. |
+| **2.2** | 13/05/26 | Dominio permanente `brazo.nxserve.org`. Cloudflare Tunnel. Eliminado DuckDNS. |
+| **2.1** | 12/05/26 | Cloudflare Tunnel + Quick Tunnel. LED Matrix con dominio. |
+| **2.0** | 10/05/26 | Sexto servo de muñeca. Green dot. Handedness. Interpolación suave. PoseMapper. |
+| **1.0** | 04/06/26 | Primer prototipo: 5 dedos, tracking básico. |
+
+## 7. Problemas Conocidos
+
+1. **USB OTG post-reinicio:** El `arduino-router` y SOCAT de fábrica pueden recuperar el puerto 7500. El servicio `brazo-init.service` los mata al arrancar.
+2. **Safe pose del watchdog:** Si el watchdog del Mega salta, va a 1300 µs (centro de muñeca). Los dedos quedan a media apertura.
+3. **ACKs perdidos:** El Mega responde al heartbeat por Serial1 (no por USB). El backend no recibe confirmación, pero no la necesita.
+4. **mDNS lento:** `brazorobotico.local` puede tardar hasta 30s en resolverse tras un arranque.
+
+## 8. URLs de Acceso
+
+| Método | URL | Puerto |
+|--------|-----|:------:|
+| 🌍 Web | `https://brazo.nxserve.org` | 443 → 3000 |
+| 🏠 Local | `http://brazorobotico.local:3000` | 3000 |
+| 🔐 SSH | `ssh arduino@brazorobotico.local` | 22 |
+| 🩺 Health | `https://brazo.nxserve.org/api/health` | — |
+
+## 9. Estructura del Repositorio
+
+```
+BrazoRoboticoV2/
+├── backend/
+│   ├── server.py              # Flask + WebSocket
+│   ├── pose_mapper.py         # ★ Core: landmarks → PWM
+│   ├── serial_manager.py      # Comunicación TCP con SOCAT
+│   ├── config/                # YAMLs (calibración, tracking, red)
+│   └── static/                # Build frontend
+├── frontend/                  # React 18 + TypeScript
+├── firmware/
+│   ├── mega_servos/           # ★ Firmware activo del Mega
+│   └── stm32/                 # STM32 (LED Matrix, legacy)
+├── deploy/
+│   ├── systemd/               # socat-mega, robot-hand, brazo-init
+│   ├── udev/                  # Reglas USB
+│   └── requirements.txt       # Dependencias Python
+├── docs/
+│   ├── CONTEXT.md             # Lenguaje ubicuo
+│   ├── memoria-tecnica.html   # Memoria imprimible
+│   └── adr/                   # Decisiones arquitectónicas
+└── tests/
+    └── test_serial_manager.py
+```
+
+---
+
+> **Repositorio:** [github.com/fxMT-nx/BrazoRoboticoV2](https://github.com/fxMT-nx/BrazoRoboticoV2)  
+> **Demo:** [brazo.nxserve.org](https://brazo.nxserve.org)  
+> **Licencia:** MIT
