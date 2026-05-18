@@ -9,7 +9,7 @@ mediapipe:
 
 smoothing:
   ema_alpha: 0.20
-  max_change_per_frame: 50
+  max_change_per_frame: 10    # ~60 µs/frame — evita tirones sin ser demasiado lento
 
 pose_mapper:
   sensitivity: 1.0           # Máxima sensibilidad

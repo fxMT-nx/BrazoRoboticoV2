@@ -121,13 +121,33 @@ def init_system() -> None:
 
 
 def _send_safe_pose() -> None:
-    """Envía safe pose a todos los servos si SerialManager está conectado."""
-    global serial_mgr
-    if serial_mgr is not None and hasattr(serial_mgr, "is_connected") and serial_mgr.is_connected:
+    """Envía cada servo a su posición de abierto (safe pose) al desconectar.
+    
+    Usa los valores calibrados de open_pwm de cada dedo para que el brazo
+    quede en una posición neutral y segura. Si no hay calibración disponible,
+    usa el safe_pose_pwm por defecto (1300 µs).
+    """
+    global serial_mgr, pose_mapper
+    if serial_mgr is None or not hasattr(serial_mgr, "is_connected") or not serial_mgr.is_connected:
+        return
+    
+    try:
+        # Intentar enviar cada servo a su posición de abierto (calibrada)
+        if pose_mapper is not None and hasattr(pose_mapper, "finger_configs"):
+            for i in range(6):
+                cfg = pose_mapper.finger_configs[i] if i < 5 else pose_mapper.wrist_config
+                open_pwm = cfg["open_pwm"]
+                serial_mgr.send_command(i, open_pwm)
+            logger.info("Safe pose: servos a posición abierta (calibrada)")
+        else:
+            # Fallback: usar safe_pose_pwm único
+            serial_mgr.send_safe_pose()
+    except Exception as exc:
+        logger.error("Error enviando safe pose: %s", exc)
         try:
             serial_mgr.send_safe_pose()
-        except Exception as exc:
-            logger.error("Error enviando safe pose: %s", exc)
+        except Exception:
+            pass
 
 
 # ── Rutas HTTP ────────────────────────────────────────────────────────

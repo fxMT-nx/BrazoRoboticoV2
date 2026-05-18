@@ -5,18 +5,16 @@
 # Servidor principal del brazo robótico. Sirve la API REST, WebSocket para
 # tiempo real, y el frontend estático (React build).
 #
-# Depende de socat.service para el bridge serial.
+# Depende de socat-mega.service para el bridge con el Mega por USB.
 # =============================================================================
 Description=BrazoRoboticoV2 — Flask + WebSocket
-After=network-online.target socat.service
-Wants=socat.service
+After=network-online.target socat-mega.service
+Wants=socat-mega.service
 
 [Service]
 Type=simple
 User=arduino
 WorkingDirectory=/home/arduino/brazorobotico/backend
-# Validar configuración antes de arrancar
-ExecStartPre=/usr/bin/python3 -c "import sys; sys.path.insert(0, '.'); from config import validate; validate()"
 ExecStart=/usr/bin/python3 server.py
 Restart=on-failure
 RestartSec=10

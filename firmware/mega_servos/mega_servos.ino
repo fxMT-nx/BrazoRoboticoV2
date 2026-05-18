@@ -49,11 +49,11 @@
 #define CMD_BUF_SIZE    16       // Suficiente para "F4 2500\n\0"
 #define PWM_MIN_US      500      // Límite inferior hardware MG996R (0°)
 #define PWM_MAX_US      2500     // Límite superior hardware MG996R (180°)
-#define PWM_CENTER_US   1500     // Safe pose / centro (90°)
+#define PWM_CENTER_US   1300     // Safe pose / centro (calibrado con la muñeca)
 
 // Watchdog
-#define HEARTBEAT_TIMEOUT_MS  2500   // 2.5s sin heartbeat → safe pose
-                                     // (margen sobre los 2s del backend)
+#define HEARTBEAT_TIMEOUT_MS  2500   // 2.5s sin heartbeat → safe pose (1300 µs)
+                                     // Margen de 500ms sobre los 2s del backend
 // Interpolación trapezoidal
 #define STEP_INTERVAL_MS      10     // Intervalo entre pasos de interpolación (ms)
 #define ACCEL_STEP            2      // Incremento/decremento de velocidad (µs/paso²)

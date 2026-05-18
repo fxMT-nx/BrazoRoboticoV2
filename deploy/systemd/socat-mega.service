@@ -1,11 +1,12 @@
 [Unit]
 # =============================================================================
-# SOCAT bridge: TCP:7500 ↔ Mega 2560 por USB OTG (/dev/ttyACM0)
+# SOCAT bridge: TCP:7500 ↔ Mega 2560 por USB OTG
 #
-# El Mega 2560 se conecta al UNO Q por USB OTG y aparece como /dev/ttyACM0.
-# SOCAT crea un bridge TCP para que Flask hable con el Mega.
+# El Mega 2560 se conecta al UNO Q mediante USB OTG y aparece como /dev/ttyACM0.
+# SOCAT crea un bridge TCP para que Flask pueda hablar con el Mega
+# a través del puerto serie virtual.
 #
-# Flujo: Flask → TCP:7500 → SOCAT → /dev/ttyACM0 → Mega → PWM → Servos
+# Flujo: Flask → TCP:7500 → SOCAT → /dev/ttyACM0 → Mega 2560 → PWM → Servos
 # =============================================================================
 Description=SOCAT bridge: TCP:7500 ↔ Mega 2560 (USB OTG)
 After=multi-user.target

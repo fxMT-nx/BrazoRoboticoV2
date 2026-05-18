@@ -46,5 +46,5 @@ fingers:
     deadband_pwm: 15
     invert: false
 
-safe_pose_pwm: 1300  # Centro real de la muñeca
-safe_pose_fallback_ms: 2000
+safe_pose_pwm: 1300  # Posición segura por defecto (nota: al desconectar web se usa open_pwm de cada dedo)
+safe_pose_fallback_ms: 2000  # Timeout sin heartbeat → safe pose en Mega

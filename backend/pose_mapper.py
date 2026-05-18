@@ -414,7 +414,8 @@ class PoseMapper:
         sm_cfg = track.get("smoothing", {})
         self.ema_alpha: float = sm_cfg.get("ema_alpha", 0.25)
         self.max_change_pwm: int = sm_cfg.get("max_change_per_frame", 5) * 6
-        # aprox: 5° × ~5.56 µs/° ≈ 28 µs → lo redondeamos a 30
+        # Con max_change_per_frame=10 → 60 µs/frame. A 20fps son 1200 µs/s.
+        # Suficiente para mover un servo de 600 a 2000 en ~1.2s, sin tirones.
 
         # Estado interno (persistente entre frames)
         self._prev_filtered_landmarks: Optional[list[dict]] = None

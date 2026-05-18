@@ -22,8 +22,8 @@ Cada valor corresponde a un servo en orden: `[thumb, index, middle, ring, pinky,
 _Evitar_: posición, grados, valor
 
 **Bridge**:
-Sketch del STM32U585 dentro del UNO Q que actúa como puente UART entre Qualcomm Linux y Arduino Mega. También controla la LED Matrix (12×8 LEDs rojos que muestra el número de dedos levantados o un smiley). Reenvía todos los comandos `F<idx>` y `H\n` al Mega de forma transparente.
-_Evitar_: puente
+Sketch del STM32U585 dentro del UNO Q. Originalmente actuaba como puente UART entre el Qualcomm y el Mega, pero desde la migración a **USB OTG** (Beta v2.3) su única función es controlar la **LED Matrix** (12×8 LEDs rojos). El Mega ahora se conecta directamente por USB.
+_Evitar_: puente (ya no hace de puente)
 
 **Command**:
 Mensaje serial en formato `F<idx> <pwm_us>\n` desde Flask al Mega. Donde `idx` es el índice del servo (0–5: thumb=0, index=1, middle=2, ring=3, pinky=4, wrist=5) y `pwm_us` es el ancho de pulso en microsegundos (800–2200 µs).
@@ -38,14 +38,20 @@ Los 5 dedos se dividen en dos tipos: **Thumb** (pulgar, servo 0) con estrategia 
 
 **Finger (Dedo)**:
 Cada uno de los 5 actuadores de los dedos. 1 DOF (grado de libertad) por Finger, controlado por un servo MG996R. La muñeca (Wrist) es el sexto servo pero no se considera un "dedo".
-| Índice | Dedo / Servo | Nombre canónico | Pin Mega | PWM open | PWM closed |
-|--------|-------------|-----------------|----------|----------|------------|
-| 0 | Pulgar | Thumb | D2 | 1000 µs | 2000 µs |
-| 1 | Índice | Index | D3 | 1000 µs | 2000 µs |
-| 2 | Medio | Middle | D4 | 1000 µs | 2000 µs |
-| 3 | Anular | Ring | D5 | 1000 µs | 2000 µs |
-| 4 | Meñique | Pinky | D6 | 1000 µs | 2000 µs |
-| 5 | Muñeca | Wrist | D7 | 1000 µs | 2000 µs |
+
+⚠️ **Orden de pines en firmware:** `SERVO_PINS[] = {7, 6, 5, 4, 3, 2}` (servo 0 → D7 ... servo 5 → D2).
+Esto es **inverso** a la lectura intuitiva (Pulgar no es D2, es D7).
+
+| Índice | Dedo / Servo | Nombre canónico | Pin Mega | PWM abierto 🖐️ | PWM cerrado ✊ |
+|--------|-------------|-----------------|:--------:|:--------------:|:--------------:|
+| 0 | 👍 Pulgar | Thumb | **D7** | **2000 µs** | **800 µs** |
+| 1 | ☝️ Índice | Index | **D6** | **2000 µs** | **600 µs** |
+| 2 | 🖕 Medio | Middle | **D5** | **1700 µs** | **600 µs** |
+| 3 | 💍 Anular | Ring | **D4** | **1900 µs** | **600 µs** |
+| 4 | 🤙 Meñique | Pinky | **D3** | **1900 µs** | **600 µs** |
+| 5 | ↕️ Muñeca | Wrist | **D2** | **2000 µs** | **600 µs** |
+
+> Valores calibrados físicamente sobre el brazo real (18/05/2026).
 _Evitar_: dedo genérico (usar Finger o el nombre específico)
 
 **FingerMapper**:
@@ -77,7 +83,7 @@ _Evitar_: puntos, keypoints
 Matriz de 12×8 LEDs rojos integrada en el UNO Q. Controlada por el STM32. Muestra el número de dedos levantados (0–5, la muñeca no se cuenta como dedo) o un smiley según el estado del sistema. Incluye animaciones: parpadeo de ojos cada 3s, pulso de heartbeat, blink de error, e iconos de grabación/reproducción.
 
 **Mega**:
-Arduino Mega 2560 — microcontrolador secundario responsable de generar las señales PWM para los 6 servos MG996R. Recibe comandos por **Serial1** (RX1=D19, TX1=D18) desde el STM32 Bridge. Implementa interpolación suave con perfil trapezoidal y watchdog de heartbeat con timeout a safe pose.
+Arduino Mega 2560 — microcontrolador secundario responsable de generar las señales PWM para los 6 servos MG996R. Recibe comandos por **USB (CDC ACM)** desde el UNO Q, conectado mediante un adaptador **USB OTG**. Implementa interpolación suave con perfil trapezoidal y watchdog de heartbeat con timeout a safe pose. El antiguo enlace por **Serial1** (RX1=D19, TX1=D18) ya no se utiliza desde la migración a USB OTG.
 
 **PoseMapper**:
 Clase Python (`backend/pose_mapper.py`) que convierte 21 landmarks 3D de MediaPipe + wrist_angle + handedness en 6 valores PWM para servos MG996R. Pipeline completo por frame:
@@ -117,7 +123,7 @@ _Evitar_: motor
 Hook React `useSmoothAngles` (`frontend/src/hooks/useSmoothAngles.ts`) que interpola valores de ángulos (Angles[6]) para transiciones visuales suaves en el frontend. Cuando rawAngles cambia, anima desde el valor mostrado actual al nuevo usando cubic ease-out durante **40ms** vía requestAnimationFrame. Previene saltos visuales en la UI sin afectar los valores reales enviados al hardware.
 
 **SOCAT**:
-Herramienta Linux que crea un bridge bidireccional entre TCP:7500 y `/dev/ttyGS0` (USB Gadget Serial). Gestionado como servicio systemd (`socat.service`) con `Restart=always`. Permite que Flask se comunique con el STM32/Mega vía TCP sin necesidad de permisos de dispositivo serial.
+Herramienta Linux que crea un bridge bidireccional entre **TCP:7500** y **/dev/ttyACM0** (Mega 2560 por USB OTG). Gestionado como servicio systemd (`socat-mega.service`) con `Restart=always`. Permite que Flask se comunique con el Mega vía TCP sin permisos de dispositivo serial. Anteriormente apuntaba a `/dev/ttyGS0` (USB Gadget del STM32), pero desde la migración a USB OTG la ruta es directa al Mega.
 _Evitar_: proxy serial
 
 **STM32**:
@@ -157,15 +163,13 @@ Camino completo de una señal desde la mano del usuario hasta el movimiento del 
 🖥️  Navegador (MediaPipe.js + findGreenDot)
     ↓  landmarks (21×3D) + wrist_angle + handedness por WebSocket
 🐍  Flask (QRB2210 — Debian Linux)
-    ↓  PoseMapper: landmarks + wrist_angle + handedness → [800..2200 µs] ×6
+    ↓  PoseMapper: landmarks + wrist_angle + handedness → [600..2000 µs] ×6
     ↓  SerialManager: Command F<idx> <pwm_us>\n
     ↓  TCP:7500
 🔗  SOCAT (systemd — Restart=always)
-    ↓  /dev/ttyGS0 (USB Gadget Serial)
-🔌  STM32U585 (Bridge — reenvía al Mega, procesa LED Matrix)
-    ↓  Serial1 (D0/D1 — USART1)
-🔌  Arduino Mega 2560
-    ↓  Serial1 → firmware → Interpolation trapezoidal → PWM
+    ↓  /dev/ttyACM0 (USB OTG)
+🔌  Arduino Mega 2560 (USB CDC ACM)
+    ↓  Firmware → Interpolation trapezoidal → PWM
 ⚙️  Servo MG996R ×6
     ↓
 🤖  Mano robótica se mueve
@@ -179,8 +183,8 @@ Camino completo de una señal desde la mano del usuario hasta el movimiento del 
 - Un **Heartbeat** `H\n` mantiene vivos todos los **Servos** (watchdog global)
 - Una secuencia de **Landmarks** (21×3D) + **wrist_angle** + **handedness** produce 6 valores **Angles (PWM)**
 - Un **Record** contiene N **Frames** (cada frame = landmarks + angles + timestamp)
-- **SOCAT** conecta exactamente 1 puerto TCP (7500) a 1 dispositivo serial (/dev/ttyGS0)
-- **STM32** es el bridge entre 1 USB Gadget Serial y 1 UART (Serial1 → Mega Serial1)
+- **SOCAT** conecta exactamente 1 puerto TCP (7500) a 1 dispositivo serial (/dev/ttyACM0 — Mega por USB OTG)
+- **STM32** (bridge legacy) ya no forma parte de la ruta de comunicación activa. Su única función actual es controlar la LED Matrix del UNO Q.
 - El **Green Dot** es detectado por `findGreenDot()` en el frontend y se convierte en **wrist_angle** para el **PoseMapper**
 - La **Handedness** se extrae en el frontend y se usa en el **ThumbMapper** para decidir la dirección de apertura del pulgar
 - **SmoothAngles** toma los **Angles** raw y produce **Angles** interpolados para la UI (sin afectar al hardware)
@@ -206,4 +210,4 @@ Camino completo de una señal desde la mano del usuario hasta el movimiento del 
 - ~~"motor"~~ → resuelto: son **Servos MG996R**
 - ~~"posición" para servos~~ → resuelto: se usa **PWM (µs)**
 - ~~"ángulo" en comandos seriales~~ → resuelto: el protocolo V2 usa microsegundos PWM (ver ADR-0002)
-- ~~"Serial3" para comunicación con Mega~~ → resuelto: es **Serial1** (RX1=D19, TX1=D18), conectado físicamente al STM32 Bridge
+- ~~"Serial3" para comunicación con Mega~~ → resuelto: es **USB Serial** (CDC ACM vía OTG), ya no se usa Serial1 desde la migración a USB OTG
