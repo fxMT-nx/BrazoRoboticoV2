@@ -94,11 +94,15 @@ La cinemática del brazo replica los movimientos de la **mano humana** capturado
 ### Cadena de procesamiento
 
 ```
-┌──────────┐   ┌──────────┐   ┌──────────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐   ┌──────────┐
-│ Cámara   │ → │ MediaPipe│ → │ WebSocket    │ → │ Flask    │ → │ SOCAT    │ → │ Mega 2560    │ → │ Servos   │
-│ USB/web  │   │ Hand     │   │ (navegador   │   │ (UNO Q)  │   │ TCP:7500 │   │ USB OTG      │   │ MG996R   │
-│          │   │ Landmark │   │  → UNO Q)    │   │          │   │ ↔ USB    │   │ PWM out D2-D7│   │ ×6       │
-└──────────┘   └──────────┘   └──────────────┘   └──────────┘   └──────────┘   └──────────────┘   └──────────┘
+┌──────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────┐   ┌────────────┐   ┌──────────────┐   ┌──────────┐
+│ Cámara   │ → │ MediaPipe.js │ → │ WebSocket    │ → │ Flask    │ → │ SOCAT      │ → │ Mega 2560    │ → │ Servos   │
+│ USB/web  │   │ HandLandmark │   │ wss://:3000  │   │ (UNO Q)  │   │ TCP:7500   │   │ USB OTG      │   │ MG996R   │
+│ 640×480  │   │ 21 landmarks │   │  → UNO Q     │   │ PoseMap  │   │ ↔ /dev/    │   │ PWM out      │   │ ×6       │
+│ ~30 FPS  │   │ 3D + handed  │   │ ~20-30 msg/s │   │ → 6 PWMs │   │ ttyACM0    │   │ D7-D2 115200 │   │ 5 dedos  │
+└──────────┘   └──────────────┘   └──────────────┘   └──────────┘   └────────────┘   └──────────────┘   └──────────┘
+                                                     
+Protocolo serie: F<idx> <pwm_us>\n @ 115200 baud
+Heartbeat: H\n (cada 500ms — reset watchdog del Mega)
 ```
 
 ---
@@ -137,42 +141,36 @@ flowchart TD
         
         FLASK -->|"/ws"| PM
         PM -->|"[thumb, index, middle,<br/>ring, pinky, wrist]"| SM
+        SOCAT["SOCAT systemd<br/>TCP:7500 ↔ /dev/ttyACM0"]
+        SM -->|"TCP:7500<br/>F&lt;idx&gt; &lt;pwm&gt;\\n"| SOCAT
     end
 
-    subgraph STM32["🔌 STM32U585 (en UNO Q)"]
-        SOCAT["SOCAT<br/>systemd service<br/>TCP:7500 ↔ /dev/ttyGS0"]
-        BRIDGE["bridge.ino<br/>UART Passthrough<br/>+ LED Matrix 12×8"]
-        LED["LED Matrix<br/>🔢 Conteo de dedos<br/>🙂 Smiley status"]
-        
-        SOCAT -->|"USB CDC ACM"| BRIDGE
-        BRIDGE --- LED
-    end
-
-    subgraph Mega["🔌 Arduino Mega 2560"]
+    subgraph Mega["🔌 Arduino Mega 2560 (USB OTG)"]
+        USB["USB CDC ACM<br/>/dev/ttyACM0<br/>115200 baud"]
         PARSER["Parser de comandos<br/>F&lt;idx&gt; &lt;pwm&gt;\\n"]
         TRAP["Aceleración trapezoidal<br/>Movimiento suave"]
         WD["Watchdog Heartbeat<br/>2.5s timeout → safe pose"]
-        PWM["PWM → Servos<br/>D2, D3, D4, D5, D6, D7"]
+        PWM["PWM → Servos<br/>D7, D6, D5, D4, D3, D2"]
         
+        SOCAT -->|"USB OTG"| USB
+        USB --> PARSER
         PARSER --> TRAP
         TRAP --> PWM
         WD -->|"timeout"| PWM
     end
 
     subgraph Servos["⚙️ MG996R ×6"]
-    T["👍 Pulgar<br/>D2"]
-    I["☝️ Índice<br/>D3"]
-    M["🖕 Corazón<br/>D4"]
-    R["💍 Anular<br/>D5"]
-    P["🤙 Meñique<br/>D6"]
-    W["↕️ Muñeca<br/>D7"]
+    T["👍 Pulgar<br/>D7"]
+    I["☝️ Índice<br/>D6"]
+    M["🖕 Corazón<br/>D5"]
+    R["💍 Anular<br/>D4"]
+    P["🤙 Meñique<br/>D3"]
+    W["↕️ Muñeca<br/>D2"]
     end
 
     USUARIO -->|"ve"| CAM
     HAND -->|"📷"| CAM
-    WS_SEND -->|"WebSocket<br/>wss://:3000/ws"| FLASK
-    SM -->|"TCP:7500<br/>F&lt;idx&gt; &lt;pwm&gt;\\n"| SOCAT
-    BRIDGE -->|"UART D0/D1<br/>115200 baud"| PARSER
+    WS_SEND -->|"WebSocket<br/>wss://brazo.nxserve.org/ws"| FLASK
     PWM --> T
     PWM --> I
     PWM --> M
@@ -186,8 +184,7 @@ flowchart TD
     style FLASK fill:#e8f5e9,stroke:#2e7d32
     style PM fill:#e8f5e9,stroke:#2e7d32
     style SOCAT fill:#f3e5f5,stroke:#7b1fa2
-    style BRIDGE fill:#f3e5f5,stroke:#7b1fa2
-    style LED fill:#fce4ec,stroke:#c62828
+    style USB fill:#e0f2f1,stroke:#00695c
     style PARSER fill:#e0f2f1,stroke:#00695c
     style TRAP fill:#e0f2f1,stroke:#00695c
     style WD fill:#ffebee,stroke:#b71c1c
@@ -195,17 +192,19 @@ flowchart TD
 
 ### Principios de diseño
 
-1. **Dual-board por aislamiento eléctrico**: El UNO Q (cerebro Linux) está aislado eléctricamente del Mega (potencia). Los picos de corriente de los servos (hasta 2 A en stall) nunca afectan al Linux.
+1. **Conexión USB OTG**: El Mega se conecta al UNO Q únicamente por **USB OTG** (no UART, no I2C). Sin cables de señal adicionales.
 
-2. **PoseMapper, no IK**: No hay cinemática inversa real (1 DOF por dedo). El mapeo es directo: landmarks 3D → PWM. Cada dedo mide su ángulo de flexión en la articulación PIP.
+2. **Dual-board por aislamiento eléctrico**: El UNO Q (cerebro Linux) está aislado eléctricamente del Mega (potencia). Los picos de corriente de los servos (hasta 2 A en stall) nunca afectan al Linux.
 
-3. **Doble seguridad (safe pose)**:
+3. **PoseMapper, no IK**: No hay cinemática inversa real (1 DOF por dedo). El mapeo es directo: landmarks 3D → PWM. Cada dedo mide su ángulo de flexión en la articulación PIP.
+
+4. **Doble seguridad (safe pose)**:
    - **Software**: Si PoseMapper recibe landmarks inválidos → `[1500, 1500, 1500, 1500, 1500, 1500]` µs.
    - **Hardware**: Watchdog en Mega: 2.5 s sin heartbeat → safe pose automática.
 
-4. **Config resiliente**: El sistema arranca aunque falten los archivos YAML. Todos los defaults están hardcodeados en `pose_mapper.py`.
+5. **Config resiliente**: El sistema arranca aunque falten los archivos YAML. Todos los defaults están hardcodeados en `pose_mapper.py`.
 
-5. **SOCAT como infraestructura**: Bridge TCP ↔ USB manejado por systemd, no por scripts manuales. Reconexión automática.
+6. **SOCAT como infraestructura**: Bridge TCP ↔ USB manejado por systemd, no por scripts manuales. Reconexión automática.
 
 ---
 
@@ -243,44 +242,49 @@ flowchart TD
 
 > 🔧 Valores calibrados físicamente sobre el brazo real (18/05/2026)
 
-### 3.3 Cableado UNO Q ↔ Mega 2560
+### 3.3 Conexión UNO Q ↔ Mega 2560
 
 ```
-Arduino UNO Q (STM32)          Arduino Mega 2560
-┌─────────────────────┐       ┌──────────────────────┐
-│                     │       │                      │
-│  D1 (TX)  ──────────┼───────┼── D19 (RX1)          │
-│                     │       │                      │
-│  D0 (RX)  ──────────┼───────┼── D18 (TX1)          │
-│                     │       │                      │
-│  GND      ──────────┼───────┼── GND                │
-│                     │       │                      │
-└─────────────────────┘       └──────────────────────┘
+┌─────────────────────┐         USB-C               ┌──────────────────────┐
+│                     │  ╔══════════════╗ OTG        │                      │
+│   Arduino UNO Q     │  ║  Adaptador   ║══════════════   Arduino Mega 2560  │
+│   (Qualcomm Linux)  │  ║  USB-C ⭢ USB║            │   PWM → Servos ×6     │
+│                     │  ╚══════════════╝            │                      │
+│   Flask → SOCAT     │  TCP:7500 ↔ /dev/ttyACM0    │   USB CDC ACM         │
+│   :3000              │  ════════════════════════════   Firmware:            │
+│                     │  Protocolo: F<idx> <pwm_us>\n│   mega_servos.ino     │
+└─────────────────────┘  @ 115200 baud               └──────────────────────┘
 
-Serial1 @ 115200 baud
-Protocolo: F<idx> <pwm_us>\n
+Cada placa con su propia fuente de alimentación externa.
+GND común entre ambas fuentes.
 ```
 
 ### 3.4 Alimentación
 
-> ⚠️ **ADVERTENCIA**: Los servos MG996R consumen hasta **2 A en stall** cada uno. La fuente debe ser **5 V / 10 A mínimo**. No alimentar los servos desde el regulador del Mega ni del UNO Q.
+> ⚠️ **ADVERTENCIA**: Los servos MG996R consumen hasta **2 A en stall** cada uno.  
+> Usar **siempre** fuente externa para servos. No alimentar desde el regulador del Mega ni del UNO Q.
 
-| Línea | Fuente | Tensión | Corriente |
-|-------|--------|:-------:|:---------:|
-| UNO Q (VIN) | Fuente independiente | 6.5–12 V | 2 A |
-| Mega + Servos | Fuente switching externa | **5 V** | **10 A+** |
-| GND | Común entre ambas fuentes | — | — |
-
-**Conexiones de alimentación:**
+| Línea | Fuente | Tensión | Corriente | Conectar a |
+|-------|--------|:-------:|:---------:|-----------|
+| **Servos + Mega** | Switching externa | **5 V** | **10 A+** | Sensor Shield V2.0 (bornas de potencia) |
+| **UNO Q** | Fuente independiente | 6.5–12 V | 2 A | VIN (conector de barril) |
+| **GND** | Común entre ambas | — | — | Puente GND entre fuentes |
 
 ```
-Fuente 5V/10A
-  ├── +5V ──→ Mega VCC (o pin 5V del Sensor Shield)
-  ├── +5V ──→ Servos (línea de potencia roja)
-  └── GND ──→ Mega GND ──→ UNO Q GND (común)
-
-Fuente 9V/2A
-  └── VIN ──→ UNO Q VIN
+┌─────────────────────────────────────────────────────┐
+│                ESQUEMA DE ALIMENTACIÓN               │
+├─────────────────────────────────────────────────────┤
+│                                                      │
+│  Fuente 5V/10A (servos + Mega)                      │
+│    ├── +5V ──→ Sensor Shield V2.0 (borna VCC)        │
+│    ├── +5V ──→ Servos (cable rojo de potencia)       │
+│    └── GND ──→ Mega GND ──→ UNO Q GND               │
+│                                                      │
+│  Fuente 9V/2A (UNO Q)                                │
+│    └── VIN ──→ UNO Q (conector Jack)                 │
+│                                                      │
+│  ⚠️  AMBAS FUENTES DEBEN COMPARTIR GND              │
+└─────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -804,7 +808,7 @@ La distancia de frenado se calcula con la fórmula cinemática `d = v² / (2·a)
 
 ### 6.1 Serial (UNO Q ↔ Mega 2560)
 
-Capa física: **UART asíncrono a 115200 baud**, 8 bits, 1 stop bit, sin paridad.
+Capa física: **USB CDC ACM a 115200 baud** vía OTG, 8 bits, 1 stop bit, sin paridad.
 
 | Comando | Formato | Ejemplo | Descripción |
 |---------|---------|:-------:|------------|
@@ -827,10 +831,11 @@ Capa física: **UART asíncrono a 115200 baud**, 8 bits, 1 stop bit, sin paridad
 **Cadena de comunicación completa:**
 
 ```
-┌─────────┐   TCP:7500    ┌─────────┐   USB CDC ACM    ┌─────────┐   UART D0/D1    ┌─────────┐
-│  Flask  │ ────────────→ │  SOCAT  │ ────────────────→ │  STM32  │ ──────────────→ │  Mega   │
-│ (Python)│ ←──────────── │ (TCP ↔  │ ←──────────────── │ (Bridge)│ ←────────────── │ (Parser)│
-└─────────┘   F0 1500\n   │  USB)   │    F0 1500\n      └─────────┘   F0 1500\n     └─────────┘
+┌─────────┐   TCP:7500    ┌────────────┐   USB OTG      ┌─────────┐
+│  Flask  │ ────────────→ │   SOCAT    │ ──────────────→ │  Mega   │
+│ (Python)│ ←──────────── │ (TCP ↔ USB)│ ←────────────── │ (Parser)│
+└─────────┘   F0 1500\n   │ /dev/ttyACM0│   OK\n (Serial1)└─────────┘
+                          └────────────┘
 ```
 
 ### 6.2 WebSocket (Navegador ↔ Flask)
@@ -960,7 +965,7 @@ cd frontend && npm run dev
 
 | Servicio | Descripción | Dependencia | Restart |
 |----------|-------------|-------------|:-------:|
-| `socat.service` | Bridge TCP:7500 ↔ USB Gadget Serial (`/dev/ttyGS0`) | `dev-ttyGS0.device` | always |
+| `socat-mega.service` | Bridge TCP:7500 ↔ Mega 2560 USB OTG (`/dev/ttyACM0`) | `multi-user.target` | always |
 | `robot-hand.service` | Flask + WebSocket en puerto :3000 | Wants `socat.service` | on-failure |
 
 ```bash
