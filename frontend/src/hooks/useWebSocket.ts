@@ -110,6 +110,12 @@ export function useWebSocket() {
     handednessRef.current = handedness;
   }, []);
 
+  const sendCommand = useCallback((command: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ command }));
+    }
+  }, []);
+
   function cleanupTimers() {
     if (sendTimerRef.current) {
       clearInterval(sendTimerRef.current);
@@ -123,5 +129,5 @@ export function useWebSocket() {
     };
   }, [disconnect]);
 
-  return { ...state, connect, disconnect, sendLandmarks };
+  return { ...state, connect, disconnect, sendLandmarks, sendCommand };
 }

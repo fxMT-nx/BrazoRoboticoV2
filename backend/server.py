@@ -321,36 +321,37 @@ def ws_handler(ws):
         while True:
             message = ws.receive()
             if message is None:
-                # Cliente cerró la conexión limpiamente
                 break
 
-            # ── Parsear mensaje ──────────────────────────────────
             try:
                 data = json.loads(message)
-            except json.JSONDecodeError as exc:
-                logger.warning("JSON inválido desde WebSocket: %s", exc)
+            except json.JSONDecodeError:
+                continue
+
+            # Comando "stop" desde el frontend → safe pose inmediato
+            if data.get("command") == "stop":
+                logger.info("Stop recibido — safe pose")
+                _send_safe_pose()
+                ws.send(json.dumps({"angles": current_angles, "status": "stopped"}))
                 continue
 
             landmarks = data.get("landmarks")
             wrist_angle = data.get("wrist_angle")
-            handedness = data.get("handedness")  # ← NUEVO: 'Left' o 'Right' o None
+            handedness = data.get("handedness")
 
             if not landmarks:
                 continue
 
             # ── Procesar frame ───────────────────────────────
             try:
-                # Verificar que pose_mapper esté disponible
                 if pose_mapper is None:
                     raise RuntimeError("PoseMapper no inicializado")
 
-                # Pasar wrist_angle al PoseMapper
                 pwm_values = pose_mapper.landmarks_to_pwm(
                     landmarks, wrist_angle=wrist_angle, handedness=handedness
                 )
                 current_angles = pwm_values
 
-                # Enviar comandos al Mega (uno por servo)
                 if (
                     serial_mgr is not None
                     and hasattr(serial_mgr, "is_connected")
@@ -358,7 +359,6 @@ def ws_handler(ws):
                 ):
                     for i, pwm in enumerate(pwm_values):
                         serial_mgr.send_command(i, pwm)
-                        # ── Debug serial: registrar comando enviado ──
                         global serial_debug_log, serial_commands_sent
                         serial_debug_log.append({
                             'time': time.time(),
@@ -367,30 +367,20 @@ def ws_handler(ws):
                         })
                         serial_commands_sent += 1
 
-                # Responder al frontend
-                ws.send(
-                    json.dumps(
-                        {
-                            "angles": pwm_values,
-                            "timestamp": data.get("timestamp", time.time()),
-                        }
-                    )
-                )
-
+                ws.send(json.dumps({
+                    "angles": pwm_values,
+                    "timestamp": data.get("timestamp", time.time()),
+                }))
                 frame_count += 1
 
             except Exception as exc:
                 logger.error("Error procesando frame: %s", exc, exc_info=True)
                 _send_safe_pose()
-                ws.send(
-                    json.dumps(
-                        {
-                            "angles": [1500, 1500, 1500, 1500, 1500, 1500],
-                            "error": str(exc),
-                            "timestamp": data.get("timestamp", time.time()),
-                        }
-                    )
-                )
+                ws.send(json.dumps({
+                    "angles": [1500, 1500, 1500, 1500, 1500, 1500],
+                    "error": str(exc),
+                    "timestamp": data.get("timestamp", time.time()),
+                }))
 
     except Exception as exc:
         logger.error("Error en bucle WebSocket: %s", exc, exc_info=True)

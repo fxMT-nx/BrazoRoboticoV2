@@ -98,8 +98,9 @@ const App: React.FC = () => {
   const handleStop = useCallback(() => {
     setStatus('idle');
     setAngles(INITIAL_ANGLES);
-    // No desconectar WebSocket — mantenerlo vivo para cuando vuelva a Start
-  }, []);
+    // Enviar comando stop para que el servidor ponga safe pose
+    ws.sendCommand('stop');
+  }, [ws]);
 
   const handleRecord = useCallback(() => {
     if (isRecording) {
