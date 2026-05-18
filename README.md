@@ -1,23 +1,50 @@
-# 🦾 Control por Visión Artificial de Brazo Robótico Articulado
-## Brazo Robótico V2 · 6 GDL (5 falanges + muñeca)
+<div align="center">
+
+# 🦾 Brazo Robótico V2
+
+### Control por Visión Artificial · 6 GDL · Tiempo Real
+
+[![Status](https://img.shields.io/badge/Estado-Operativo-success?style=for-the-badge)](https://brazo.nxserve.org)
+[![Live Demo](https://img.shields.io/badge/Demo-https://brazo.nxserve.org-0055FF?style=for-the-badge)](https://brazo.nxserve.org)
+[![Licencia](https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge)](LICENSE)
+
+---
+
+[![Arduino UNO Q](https://img.shields.io/badge/Arduino-UNO_Q-00979D?logo=arduino&style=flat-square)](https://www.arduino.cc/)
+[![Mega 2560](https://img.shields.io/badge/Mega-2560-00979D?logo=arduino&style=flat-square)](https://www.arduino.cc/)
+[![Python](https://img.shields.io/badge/Python-3.13+-3776AB?logo=python&style=flat-square)](https://python.org)
+[![Flask](https://img.shields.io/badge/Flask-3.1-black?logo=flask&style=flat-square)](https://flask.palletsprojects.com)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&style=flat-square)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&style=flat-square)](https://www.typescriptlang.org)
+[![MediaPipe](https://img.shields.io/badge/MediaPipe-Hands-FF6D00?logo=google&style=flat-square)](https://developers.google.com/mediapipe)
+[![Three.js](https://img.shields.io/badge/Three.js-r170-000000?logo=threedotjs&style=flat-square)](https://threejs.org)
+[![Cloudflare](https://img.shields.io/badge/Tunnel-Cloudflare-F38020?logo=cloudflare&style=flat-square)](https://www.cloudflare.com)
 
 > **Proyecto Final de Curso** · Grado Superior en Electrónica  
 > IES Virgen de la Encina · Mayo 2026  
-> **Versión:** 2.0 (Beta) · **Licencia:** MIT
+> **Versión:** 2.3 (Beta) · **Stack:** Full-Stack Embedded
 
-[![Licencia](https://img.shields.io/badge/Licencia-MIT-green.svg)](LICENSE)
-[![Arduino](https://img.shields.io/badge/Arduino-Mega_2560-00979D?logo=arduino)](https://www.arduino.cc/)
-[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python)](https://python.org)
-[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev)
-[![MediaPipe](https://img.shields.io/badge/MediaPipe-Hands-FF6D00)](https://developers.google.com/mediapipe)
-[![Dominio](https://img.shields.io/badge/Dominio-nxserve.org-0055FF)](https://brazo.nxserve.org)
+<br>
 
-Sistema de control de un brazo robótico articulado de **6 grados de libertad** (5 falanges + muñeca) accionados por servomotores **MG996R**, mediante **visión por computador en tiempo real**. La cinemática del brazo replica los movimientos de la mano humana capturados a través de una cámara web convencional y procesados con **MediaPipe.js** en el navegador.
+[🎯 Live Demo](https://brazo.nxserve.org) • 
+[📖 Documentación](#-índice) • 
+[🏗️ Arquitectura](#2-arquitectura-del-sistema) • 
+[⚡ Inicio Rápido](#7-instalación)
 
-**Arquitectura:** Frontend React (navegador) → WebSocket → Backend Flask (Arduino UNO Q) → Enlace serie → Arduino Mega 2560 → PWM → Servomotores.
+---
+
+</div>
+
+<br>
+
+Sistema de control de un **brazo robótico articulado de 6 grados de libertad** (5 falanges + muñeca) accionados por servomotores **MG996R**, mediante **visión por computador en tiempo real**. 
+
+La cinemática del brazo replica los movimientos de la **mano humana** capturados a través de una cámara web convencional y procesados con **MediaPipe.js** en el navegador. El resultado: **controla un brazo robótico con tu propia mano** 🖐️ → 🤖
 
 ```
-👋 → 🎥 → 🧠 (MediaPipe.js) → 🌐 (WebSocket) → 🐍 (Flask) → 🔗 (SOCAT) → 🔌 (STM32) → 🔌 (Mega 2560) → ⚙️ Servos MG996R ×6
+👋 → 🎥 (Cámara) → 🧠 (MediaPipe.js) → 🌐 (WebSocket seguro)
+ → 🐍 (Flask API) → 🔗 (SOCAT bridge) → 🔌 (Mega 2560)
+ → ⚙️ Servos MG996R ×6 → 🤖 ¡Movimiento en tiempo real!
 ```
 
 ---
@@ -38,38 +65,40 @@ Sistema de control de un brazo robótico articulado de **6 grados de libertad** 
 
 ## 1. Resumen Técnico
 
-### Especificaciones del sistema
+<br>
 
-| Parámetro | Valor |
-|-----------|-------|
-| **Grados de libertad** | 6 (5 dedos + muñeca) |
-| **Actuadores** | Tower Pro MG996R ×6 (~2 A stall c/u) |
-| **Frecuencia de tracking** | ~20–30 FPS |
-| **Latencia extremo a extremo** | ~80–150 ms |
-| **Resolución de cámara** | 640 × 480 px |
-| **Tasa de baudios serial** | 115200 bps |
-| **Rango PWM** | 500–2500 µs (típico 1000–2000) |
-| **Rango de operación servos** | 0°–180° (1000–2000 µs) |
-| **Fuente de alimentación servos** | 5 V / 10 A+ (externa) |
-| **Protocolo de comunicación** | WebSocket + Serial ASCII |
+### 📊 Especificaciones del sistema
 
-### Placas involucradas
+<div align="center">
+
+| Parámetro | Valor | Parámetro | Valor |
+|-----------|-------|-----------|-------|
+| **Grados de libertad** | 6 (5 dedos + muñeca) | **Frecuencia tracking** | ~20–30 FPS |
+| **Actuadores** | MG996R ×6 (2A stall c/u) | **Latencia extremo a extremo** | ~80–150 ms |
+| **Cerebro** | Arduino UNO Q (Qualcomm) | **Cámara** | 640 × 480 px |
+| **Control PWM** | Arduino Mega 2560 | **Baudrate serial** | 115200 bps |
+| **Alimentación servos** | 5 V / 10 A+ (externa) | **Rango PWM seguro** | 800–2200 µs |
+| **Protocolo** | WebSocket + Serial ASCII | **Rango operación** | 0°–180° |
+
+</div>
+
+### 🔌 Placas involucradas
 
 | Placa | Función | Especificaciones |
-|-------|---------|------------------|
-| **Arduino UNO Q** (ABX00162) | Cerebro central: Flask + WebSocket | QRB2210 quad-core @ 1.5 GHz, 512 MB RAM, Debian Linux |
-| **STM32U585** (en UNO Q) | Bridge serial + LED Matrix 12×8 | Cortex‑M33, USB Gadget Serial + UART |
-| **Arduino Mega 2560** | Control PWM de 6 servos | ATmega2560, 16 MHz, 54 pines digitales |
-| **MEGA Sensor Shield V2.0** | Shield de alimentación y conexiones | Regulación + bornas para servos |
+|:-----:|---------|------------------|
+| <img src="https://docs.arduino.cc/static/uno-q-featured-5901b1e8cc2f135a43c7d3e7c278a620.svg" width="40"><br>**UNO Q** | Cerebro central: Flask + WebSocket, Linux | QRB2210 quad‑core @ 1.5 GHz, 512 MB RAM, Debian |
+| <img src="https://docs.arduino.cc/static/mega2560-featured-d454bb1794dd4cb06566c9f22f9e86ad.svg" width="40"><br>**Mega 2560** | Control PWM de 6 servos | ATmega2560, 16 MHz, 54 pines digitales |
+| **Sensor Shield V2.0** | Shield de alimentación para servos | Bornas, regleta y conexión directa |
+| **MG996R ×6** | Servomotores de alto torque | 9.4 kg·cm @ 4.8V, 0.17s/60° |
 
 ### Cadena de procesamiento
 
 ```
-┌──────────┐   ┌──────────┐   ┌──────────────┐   ┌──────────┐   ┌──────────┐   ┌────────┐   ┌──────────┐   ┌──────────┐
-│ Cámara   │ → │ MediaPipe│ → │ WebSocket    │ → │ Flask    │ → │ SOCAT   │ → │ STM32  │ → │ Mega 2560│ → │ Servos   │
-│ USB/web  │   │ Hand     │   │ (navegador   │   │ (UNO Q)  │   │ (TCP →  │   │ Bridge │   │ PWM out  │   │ MG996R   │
-│          │   │ Landmark │   │  → UNO Q)    │   │          │   │ USB)    │   │        │   │          │   │ ×6       │
-└──────────┘   └──────────┘   └──────────────┘   └──────────┘   └──────────┘   └────────┘   └──────────┘   └──────────┘
+┌──────────┐   ┌──────────┐   ┌──────────────┐   ┌──────────┐   ┌──────────┐   ┌──────────────┐   ┌──────────┐
+│ Cámara   │ → │ MediaPipe│ → │ WebSocket    │ → │ Flask    │ → │ SOCAT    │ → │ Mega 2560    │ → │ Servos   │
+│ USB/web  │   │ Hand     │   │ (navegador   │   │ (UNO Q)  │   │ TCP:7500 │   │ USB OTG      │   │ MG996R   │
+│          │   │ Landmark │   │  → UNO Q)    │   │          │   │ ↔ USB    │   │ PWM out D2-D7│   │ ×6       │
+└──────────┘   └──────────┘   └──────────────┘   └──────────┘   └──────────┘   └──────────────┘   └──────────┘
 ```
 
 ---
@@ -197,14 +226,22 @@ flowchart TD
 
 ### 3.2 Pinout de servos (Arduino Mega 2560)
 
-| Servo | Dedo | Pin Mega | PWM abierto | PWM cerrado | Rango seguro |
-|:-----:|------|:--------:|:-----------:|:-----------:|:------------:|
-| 0 | **Pulgar** (Thumb) | D2 | 1000 µs | 2000 µs | 800–2200 µs |
-| 1 | **Índice** (Index) | D3 | 1000 µs | 2000 µs | 800–2200 µs |
-| 2 | **Corazón** (Middle) | D4 | 1000 µs | 2000 µs | 800–2200 µs |
-| 3 | **Anular** (Ring) | D5 | 1000 µs | 2000 µs | 800–2200 µs |
-| 4 | **Meñique** (Pinky) | D6 | 1000 µs | 2000 µs | 800–2200 µs |
-| 5 | **Muñeca** (Wrist) | D7 | 1000 µs | 2000 µs | 800–2200 µs |
+> ⚠️ **Nota:** El orden de pines en el firmware es `SERVO_PINS[] = {7, 6, 5, 4, 3, 2}` (índices 0-5).
+
+<div align="center">
+
+| Servo | Dedo | Pin Mega | PWM abierto 🖐️ | PWM cerrado ✊ | Rango seguro |
+|:-----:|------|:--------:|:--------------:|:--------------:|:------------:|
+| **0** | 👍 Pulgar (Thumb) | D7 | **2000 µs** | **800 µs** | 700–2100 µs |
+| **1** | ☝️ Índice (Index) | D6 | **2000 µs** | **600 µs** | 500–2100 µs |
+| **2** | 🖕 Corazón (Middle) | D5 | **1700 µs** | **600 µs** | 500–1800 µs |
+| **3** | 💍 Anular (Ring) | D4 | **1900 µs** | **600 µs** | 500–2000 µs |
+| **4** | 🤙 Meñique (Pinky) | D3 | **1900 µs** | **600 µs** | 500–2000 µs |
+| **5** | ↕️ Muñeca (Wrist) | D2 | **2000 µs** | **600 µs** | 700–2000 µs |
+
+</div>
+
+> 🔧 Valores calibrados físicamente sobre el brazo real (18/05/2026)
 
 ### 3.3 Cableado UNO Q ↔ Mega 2560
 
@@ -977,16 +1014,19 @@ El sistema es accesible a través de un **dominio personalizado** sin necesidad 
 
 ## 8. Referencia Rápida
 
-### URLs del sistema
+### 🌐 URLs del sistema
 
-| URL | Descripción |
-|-----|-------------|
-| `https://brazo.nxserve.org` | **Acceso principal** — dominio permanente sin puerto |
-| `http://brazorobotico.local:3000` | Acceso local vía mDNS (sin Internet) |
-| `http://<ip-uno-q>:3000` | Acceso por IP local (varía según la red) |
-| `https://brazo.nxserve.org/api/health` | Healthcheck del sistema |
-| `https://brazo.nxserve.org/api/config` | Configuración (solo lectura) |
-| `wss://brazo.nxserve.org/ws` | WebSocket para tracking |
+<div align="center">
+
+| | URL | Descripción |
+|---|-----|-------------|
+| 🌍 | **https://brazo.nxserve.org** | 🏆 **Acceso principal** — dominio permanente (Cloudflare) |
+| 🏠 | `http://brazorobotico.local:3000` | Acceso local vía mDNS (red local) |
+| 🔗 | `https://brazo.nxserve.org/api/health` | Healthcheck del sistema |
+| ⚙️ | `https://brazo.nxserve.org/api/config` | Configuración actual |
+| 🔌 | `wss://brazo.nxserve.org/ws` | WebSocket para tracking en tiempo real |
+
+</div>
 
 ### Estructura del repositorio
 
@@ -1077,19 +1117,40 @@ BrazoRoboticoV2/
 
 ## 📜 Licencia y Créditos
 
-**Proyecto académico** presentado en el IES Virgen de la Encina (Ponferrada) como trabajo final del Grado Superior en Electrónica.
+<div align="center">
 
-Tutor: [Nombre del tutor]
-Autor: [Tu nombre]
+**Proyecto académico** presentado en el **IES Virgen de la Encina** (Ponferrada)  
+como trabajo final del **Grado Superior en Electrónica**
+
+Mayo 2026
 
 ---
 
-**Hardware:** Arduino UNO Q (ABX00162), Arduino Mega 2560, Tower Pro MG996R, MEGA Sensor Shield V2.0  
-**Software:** MediaPipe (Google), Three.js, Recharts, Flask, SOCAT  
-**Inspiración:** Proyecto BrazoRobotico V1 (repositorio base)
+### 🛠️ Stack tecnológico
+
+```
+Frontend    React 18 · TypeScript · Three.js · Recharts · MediaPipe.js
+Backend     Python 3.13 · Flask 3.1 · Flask-Sock · PoseMapper
+Firmware    Arduino C++ (Mega 2560) · Zephyr (STM32)
+Infra       Cloudflare Tunnel · SOCAT · systemd · Debian Linux
+```
+
+### 🙏 Agradecimientos
+
+| | |
+|---|-----|
+| **Hardware** | Arduino UNO Q (ABX00162), Arduino Mega 2560, Tower Pro MG996R, MEGA Sensor Shield V2.0 |
+| **Software** | MediaPipe (Google), Three.js, Recharts, Flask, SOCAT, Cloudflare |
+| **Inspiración** | BrazoRobotico V1 (repositorio base) |
 
 ---
 
 <p align="center">
+  <a href="https://brazo.nxserve.org"><img src="https://img.shields.io/badge/🚀%20Live%20Demo-brazo.nxserve.org-0055FF?style=for-the-badge"></a>
+  <br><br>
   <sub>Repositorio de código abierto con fines educativos · MIT License</sub>
+  <br>
+  <sub>Hecho con ❤️ y muchas horas de debugging</sub>
 </p>
+
+</div>
