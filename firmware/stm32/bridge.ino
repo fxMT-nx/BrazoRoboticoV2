@@ -295,21 +295,21 @@ static void processByte(const char c) {
 // ══════════════════════════════════════════════════════════════════════════
 
 static void drainSerialToBuffer(void) {
-    while (Serial2.available() > 0) {                                        // Serial2 = LPUART1 = ttyHS1
+    while (Serial.available() > 0) {                                        // Serial = USB CDC ACM = ttyGS0
         const uint8_t next = (rx_head + 1) % RX_BUF_SIZE;
         if (next != rx_tail) {
-            rx_buffer[rx_head] = static_cast<char>(Serial2.read());
+            rx_buffer[rx_head] = static_cast<char>(Serial.read());
             rx_head = next;
         } else {
             rx_tail = (rx_tail + 1) % RX_BUF_SIZE;
-            rx_buffer[rx_head] = static_cast<char>(Serial2.read());
+            rx_buffer[rx_head] = static_cast<char>(Serial.read());
             rx_head = (rx_head + 1) % RX_BUF_SIZE;
         }
     }
 }
 
 static void processSerialInput(void) {
-    drainSerialToBuffer();             // drena Serial2 (LPUART1 = ttyHS1 = datos desde Flask)
+    drainSerialToBuffer();             // drena Serial (USB CDC ACM = ttyGS0 = datos desde Flask/SOCAT)
     while (rx_tail != rx_head) {
         const char c = rx_buffer[rx_tail];
         rx_tail = (rx_tail + 1) % RX_BUF_SIZE;
@@ -339,7 +339,7 @@ static void updateDisplay(void) {
 // ══════════════════════════════════════════════════════════════════════════
 
 void setup() {
-    Serial2.begin(SERIAL_BAUD);        // LPUART1 = ttyHS1 ← datos desde Flask vía SOCAT
+    Serial.begin(SERIAL_BAUD);          // USB CDC ACM ← datos desde Flask vía SOCAT/ttyGS0
     Serial1.begin(MEGA_BAUD);           // USART1 D0/D1 → Mega 2560
 
     Wire.begin();                       // I2C Master → Mega Slave (addr 0x08)

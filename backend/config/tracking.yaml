@@ -1,4 +1,5 @@
 # Configuración de tracking de mano y mapeo a PWM
+# Actualizado: 2026-05-18 — sensibilidad al máximo
 
 mediapipe:
   min_detection_confidence: 0.5
@@ -8,15 +9,14 @@ mediapipe:
 
 smoothing:
   ema_alpha: 0.20
-  max_change_per_frame: 50  # era 5 - elimina el cuello de botella del rate limiter
+  max_change_per_frame: 50
 
 pose_mapper:
-  sensitivity: 0.85         # Escala de sensibilidad (0.0-1.0)
-  # Pulgar: comparación eje X entre tip(4) e IP(3) para detectar abierto/cerrado
-  thumb_x_threshold: 0.02   # Diferencia X normalizada para detectar abducción
+  sensitivity: 1.0           # Máxima sensibilidad
+  thumb_x_threshold: 0.02
 
 serial:
-  protocol: "F<idx> <pwm_us>\n"  # Formato de comando
+  protocol: "F<idx> <pwm_us>\n"
   host: "127.0.0.1"
   port: 7500
   baudrate: 115200
@@ -24,4 +24,4 @@ serial:
   reconnect_delay_s: 0.5
   heartbeat_interval_ms: 500
   heartbeat_timeout_ms: 2000
-  debug_log_every_n: 10     # Log cada N comandos
+  debug_log_every_n: 10

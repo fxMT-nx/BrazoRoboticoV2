@@ -556,22 +556,15 @@ class PoseMapper:
             pwm = max(cfg["pwm_min"], min(cfg["pwm_max"], pwm))
             result.append(pwm)
 
-        # ── Servo 5: Wrist (flexión vertical) ──
+        # ── Servo 5: Wrist (rotación izquierda/derecha) ──
         try:
-            if wrist_angle is not None:
-                # Calcular raw base (0-1 asumiendo rango ±90°)
-                wrist_raw = max(0.0, min(1.0, (wrist_angle + 90.0) / 180.0))
-            else:
-                # Fallback: cálculo con centro de palma
-                palm_cx = (landmarks[5]["x"] + landmarks[9]["x"] +
-                           landmarks[13]["x"] + landmarks[17]["x"]) / 4.0
-                palm_cy = (landmarks[5]["y"] + landmarks[9]["y"] +
-                           landmarks[13]["y"] + landmarks[17]["y"]) / 4.0
-                wrist_dx = palm_cx - landmarks[0]["x"]
-                wrist_dy = palm_cy - landmarks[0]["y"]
-                import math
-                angle_rad = math.atan2(-wrist_dy, abs(wrist_dx) + 0.001)
-                wrist_raw = max(0.0, min(1.0, 1.0 - angle_rad / math.pi))
+            # Detección de rotación por diferencia de profundidad Z
+            # entre el índice (MCP) y el meñique (MCP)
+            idx_z = landmarks[INDEX_MCP]["z"]
+            pky_z = landmarks[PINKY_MCP]["z"]
+            z_diff = idx_z - pky_z  # <0 = rotado un lado, >0 = rotado otro
+            # Mapear rango típico [-0.04, 0.04] a [0, 1]
+            wrist_raw = max(0.0, min(1.0, (z_diff + 0.04) / 0.08))
             
             # ── AUTO-CALIBRACIÓN: estirar rango observado ──
             # Observamos el mínimo y máximo real de wrist_raw
@@ -581,7 +574,7 @@ class PoseMapper:
             # Calcular rango observado
             observed_range = self._wrist_max - self._wrist_min
             
-            if observed_range >= 0.05:
+            if observed_range >= 0.03:
                 self._wrist_calibrated = True
                 # Estirar raw al rango completo 0-1
                 wrist_raw = (wrist_raw - self._wrist_min) / observed_range
@@ -663,7 +656,7 @@ class PoseMapper:
 
             # raw suele estar en rango [-0.05, 0.05]. Mapear a [0, 1]
             # -0.05 → 0 (cerrado), +0.05 → 1 (abierto)
-            normalized = max(0.0, min(1.0, (raw + 0.05) / 0.10))
+            normalized = max(0.0, min(1.0, (raw + 0.01) / 0.02))
 
             # Mapear a PWM: 0 = closed_pwm, 1 = open_pwm
             pwm = cfg["closed_pwm"] + (cfg["open_pwm"] - cfg["closed_pwm"]) * normalized
@@ -694,7 +687,7 @@ class PoseMapper:
         flexion = joint_angle_3d(landmarks, mcp, pip, tip)
 
         # Normalizar: a mayor flexión (menor ángulo), mayor raw
-        raw = (180.0 - flexion) * self.sensitivity
+        raw = (180.0 - flexion) * self.sensitivity * 1.5
         raw = max(0.0, min(180.0, raw))
 
         return lerp(raw, float(cfg["open_pwm"]), float(cfg["closed_pwm"]))
