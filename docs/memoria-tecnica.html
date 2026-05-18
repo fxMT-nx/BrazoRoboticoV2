@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Brazo Robótico V2 — Memoria Técnica</title>
+<style>
+  @page {
+    size: A4;
+    margin: 2cm 2.5cm;
+    @top-center {
+      content: "Brazo Robótico V2 — Control por Visión Artificial";
+      font-size: 8pt;
+      color: #666;
+    }
+    @bottom-center {
+      content: "Página " counter(page);
+      font-size: 8pt;
+      color: #666;
+    }
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #1a1a1a;
+  }
+
+  /* === PORTADA === */
+  .portada {
+    page-break-after: always;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    height: 100vh;
+    padding: 4cm 2cm;
+  }
+  .portada h1 {
+    font-size: 28pt;
+    color: #0d47a1;
+    margin-bottom: 0.3cm;
+    letter-spacing: 1px;
+  }
+  .portada .subtitle {
+    font-size: 16pt;
+    color: #1565c0;
+    margin-bottom: 1.5cm;
+  }
+  .portada .badge {
+    display: inline-block;
+    background: #0d47a1;
+    color: white;
+    padding: 6px 20px;
+    border-radius: 20px;
+    font-size: 10pt;
+    margin: 4px;
+  }
+  .portada .badge.green { background: #2e7d32; }
+  .portada .badge.orange { background: #e65100; }
+  .portada .meta {
+    margin-top: 2cm;
+    font-size: 11pt;
+    color: #555;
+    line-height: 2;
+  }
+  .portada .meta strong { color: #1a1a1a; }
+
+  /* === CONTENIDO === */
+  h2 {
+    font-size: 18pt;
+    color: #0d47a1;
+    border-bottom: 3px solid #0d47a1;
+    padding-bottom: 4px;
+    margin-top: 1.5cm;
+    margin-bottom: 0.6cm;
+    page-break-after: avoid;
+  }
+  h3 {
+    font-size: 14pt;
+    color: #1565c0;
+    margin-top: 0.8cm;
+    margin-bottom: 0.3cm;
+    page-break-after: avoid;
+  }
+  h4 {
+    font-size: 12pt;
+    color: #333;
+    margin-top: 0.5cm;
+    margin-bottom: 0.2cm;
+  }
+  p { margin-bottom: 0.3cm; text-align: justify; }
+
+  ul, ol { margin: 0.3cm 0 0.3cm 0.6cm; }
+  li { margin-bottom: 0.15cm; }
+
+  /* === TABLAS === */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5cm 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  th {
+    background: #0d47a1;
+    color: white;
+    padding: 6px 8px;
+    text-align: left;
+    font-weight: 600;
+  }
+  td {
+    padding: 5px 8px;
+    border-bottom: 1px solid #ddd;
+  }
+  tr:nth-child(even) td { background: #f5f8ff; }
+  tr:hover td { background: #e3edff; }
+
+  /* === CÓDIGO === */
+  pre {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 9pt;
+    line-height: 1.4;
+    overflow-x: auto;
+    margin: 0.4cm 0;
+    page-break-inside: avoid;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  code {
+    font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+    font-size: 9.5pt;
+    background: #f0f0f0;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  pre code { background: transparent; padding: 0; }
+
+  /* === DIAGRAMAS === */
+  .diagram {
+    text-align: center;
+    margin: 0.6cm 0;
+    font-family: 'Cascadia Code', monospace;
+    font-size: 9pt;
+    line-height: 1.5;
+    page-break-inside: avoid;
+  }
+  .diagram pre {
+    display: inline-block;
+    text-align: left;
+    background: #f8f9fa;
+    color: #1a1a1a;
+    border: 1px solid #dee2e6;
+  }
+
+  /* === INFO BOXES === */
+  .info {
+    background: #e3f2fd;
+    border-left: 4px solid #0d47a1;
+    padding: 10px 14px;
+    margin: 0.4cm 0;
+    border-radius: 0 6px 6px 0;
+    page-break-inside: avoid;
+  }
+  .warning {
+    background: #fff3e0;
+    border-left: 4px solid #e65100;
+    padding: 10px 14px;
+    margin: 0.4cm 0;
+    border-radius: 0 6px 6px 0;
+    page-break-inside: avoid;
+  }
+  .success {
+    background: #e8f5e9;
+    border-left: 4px solid #2e7d32;
+    padding: 10px 14px;
+    margin: 0.4cm 0;
+    border-radius: 0 6px 6px 0;
+  }
+
+  /* === PÁGINA NUEVA === */
+  .page-break { page-break-before: always; }
+
+  /* === FOOTER === */
+  .footer {
+    text-align: center;
+    color: #888;
+    font-size: 9pt;
+    margin-top: 1cm;
+    padding-top: 0.5cm;
+    border-top: 1px solid #ddd;
+  }
+
+  /* === ESPECIFICACIONES === */
+  .specs-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 20px;
+    margin: 0.4cm 0;
+  }
+  .spec-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 8px;
+    border-bottom: 1px solid #eee;
+    font-size: 10pt;
+  }
+  .spec-item .label { color: #555; }
+  .spec-item .value { font-weight: 600; }
+
+  @media print {
+    .portada { height: auto; padding: 5cm 2cm; }
+    .no-print { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ==================== PORTADA ==================== -->
+<div class="portada">
+  <h1>🦾 Brazo Robótico V2</h1>
+  <div class="subtitle">Control por Visión Artificial · 6 GDL · Tiempo Real</div>
+
+  <div style="margin: 0.5cm 0;">
+    <span class="badge">Arduino UNO Q</span>
+    <span class="badge green">Mega 2560</span>
+    <span class="badge orange">MediaPipe Hands</span>
+    <span class="badge">Flask + React</span>
+    <span class="badge green">Cloudflare Tunnel</span>
+  </div>
+
+  <div class="meta">
+    <strong>Proyecto Final de Curso</strong><br>
+    Grado Superior en Electrónica<br>
+    IES Virgen de la Encina — Ponferrada<br>
+    Mayo 2026<br><br>
+    <strong>Versión:</strong> 2.3 (Beta) · <strong>Licencia:</strong> MIT<br>
+    <strong>Demo:</strong> https://brazo.nxserve.org
+  </div>
+</div>
+
+<!-- ==================== 1. RESUMEN ==================== -->
+<h2>1. Resumen del Proyecto</h2>
+
+<p>
+Este proyecto consiste en el diseño e implementación de un <strong>brazo robótico articulado de 6 grados de libertad</strong> (5 dedos + muñeca) controlado mediante <strong>visión por computador en tiempo real</strong>.
+</p>
+
+<p>
+El sistema captura los movimientos de la mano del usuario a través de una cámara web convencional, los procesa con <strong>MediaPipe.js</strong> en el navegador, y envía las posiciones por WebSocket a un servidor <strong>Flask</strong> que corre en un <strong>Arduino UNO Q</strong>. Este se comunica por USB OTG con un <strong>Arduino Mega 2560</strong> que genera las señales PWM para los 6 servomotores <strong>MG996R</strong>.
+</p>
+
+<div class="diagram">
+<pre>
+👋 Mano real
+   ↓  (cámara web 640×480, ~30 FPS)
+🧠 MediaPipe.js (21 landmarks 3D + handedness)
+   ↓  (WebSocket seguro wss://)
+🐍 Flask + PoseMapper (landmarks → 6 PWMs)
+   ↓  (TCP:7500 — SOCAT bridge)
+🔗 USB OTG (/dev/ttyACM0, 115200 baud)
+   ↓  (comandos F&lt;idx&gt; &lt;pwm_us&gt;\n)
+🔌 Arduino Mega 2560 (PWM out D7-D2)
+   ↓
+⚙️ Servos MG996R ×6 → 🤖 Brazo robótico
+</pre>
+</div>
+
+<div class="info">
+  <strong>🌐 Acceso remoto:</strong> El sistema es accesible desde cualquier lugar mediante
+  <strong>Cloudflare Tunnel</strong> en <code>https://brazo.nxserve.org</code>.
+  No necesita abrir puertos en el router ni conocer la IP local.
+</div>
+
+<!-- ==================== 2. ARQUITECTURA ==================== -->
+<h2>2. Arquitectura del Sistema</h2>
+
+<h3>2.1 Componentes hardware</h3>
+
+<table>
+  <tr><th>Componente</th><th>Cant.</th><th>Modelo</th><th>Función</th></tr>
+  <tr><td>Placa principal</td><td>1</td><td>Arduino UNO Q (ABX00162)</td><td>Ejecuta Flask + WebSocket en Linux embebido</td></tr>
+  <tr><td>SoC principal</td><td>1</td><td>Qualcomm QRB2210</td><td>CPU quad‑core @ 1.5 GHz, 512 MB RAM</td></tr>
+  <tr><td>MCU secundario</td><td>1</td><td>STM32U585</td><td>Control LED Matrix 12×8 (bridge legacy)</td></tr>
+  <tr><td>Placa PWM</td><td>1</td><td>Arduino Mega 2560</td><td>ATmega2560 — control PWM de 6 servos</td></tr>
+  <tr><td>Shield</td><td>1</td><td>MEGA Sensor Shield V2.0</td><td>Bornas para servos y alimentación externa</td></tr>
+  <tr><td>Servo</td><td>6</td><td>Tower Pro MG996R</td><td>Actuadores: 5 dedos + muñeca</td></tr>
+</table>
+
+<h3>2.2 Pinout de servos</h3>
+
+<div class="warning">
+  ⚠️ El orden en firmware es <code>SERVO_PINS[] = {7, 6, 5, 4, 3, 2}</code>.
+  El servo 0 (pulgar) va en D7, no en D2.
+</div>
+
+<table>
+  <tr><th>Servo</th><th>Dedo</th><th>Pin Mega</th><th>PWM abierto 🖐️</th><th>PWM cerrado ✊</th></tr>
+  <tr><td>0</td><td>👍 Pulgar (Thumb)</td><td><strong>D7</strong></td><td>2000 µs</td><td>800 µs</td></tr>
+  <tr><td>1</td><td>☝️ Índice (Index)</td><td><strong>D6</strong></td><td>2000 µs</td><td>600 µs</td></tr>
+  <tr><td>2</td><td>🖕 Corazón (Middle)</td><td><strong>D5</strong></td><td>1700 µs</td><td>600 µs</td></tr>
+  <tr><td>3</td><td>💍 Anular (Ring)</td><td><strong>D4</strong></td><td>1900 µs</td><td>600 µs</td></tr>
+  <tr><td>4</td><td>🤙 Meñique (Pinky)</td><td><strong>D3</strong></td><td>1900 µs</td><td>600 µs</td></tr>
+  <tr><td>5</td><td>↕️ Muñeca (Wrist)</td><td><strong>D2</strong></td><td>2000 µs</td><td>600 µs</td></tr>
+</table>
+
+<div class="info">Valores calibrados físicamente sobre el brazo real (18/05/2026).</div>
+
+<h3>2.3 Alimentación</h3>
+
+<div class="warning">
+  ⚠️ Los servos MG996R consumen hasta <strong>2 A en stall</strong> cada uno.
+  Usar siempre fuente externa para servos. No alimentar desde el regulador del Mega.
+</div>
+
+<table>
+  <tr><th>Línea</th><th>Fuente</th><th>Tensión</th><th>Corriente</th></tr>
+  <tr><td>Servos + Mega</td><td>Fuente switching externa</td><td><strong>5 V</strong></td><td><strong>10 A+</strong></td></tr>
+  <tr><td>UNO Q</td><td>Fuente independiente</td><td>6.5–12 V</td><td>2 A</td></tr>
+  <tr><td>GND</td><td>Común entre ambas fuentes</td><td>—</td><td>—</td></tr>
+</table>
+
+<h3>2.4 Stack tecnológico</h3>
+
+<table>
+  <tr><th>Capa</th><th>Tecnología</th><th>Función</th></tr>
+  <tr><td><strong>Frontend</strong></td><td>React 18 + TypeScript + Vite</td><td>Interfaz de usuario web</td></tr>
+  <tr><td><strong>Tracking</strong></td><td>MediaPipe.js (HandLandmarker)</td><td>21 landmarks 3D de la mano</td></tr>
+  <tr><td><strong>3D</strong></td><td>Three.js</td><td>Visualización 3D de la mano</td></tr>
+  <tr><td><strong>Backend</strong></td><td>Python 3.13 + Flask + Flask-Sock</td><td>API REST + WebSocket + PoseMapper</td></tr>
+  <tr><td><strong>Comunicación</strong></td><td>USB OTG + SOCAT + protocolo serie</td><td>Bridge TCP ↔ Mega 2560</td></tr>
+  <tr><td><strong>Firmware Mega</strong></td><td>Arduino C++ (Servo.h)</td><td>Parsing de comandos + control PWM + watchdog</td></tr>
+  <tr><td><strong>Firmware STM32</strong></td><td>Arduino C++ (LED_Matrix)</td><td>LED Matrix 12×8 (función decorativa)</td></tr>
+  <tr><td><strong>Infraestructura</strong></td><td>systemd, SOCAT, Cloudflare Tunnel</td><td>Servicios, bridge serial, túnel HTTPS</td></tr>
+</table>
+
+<!-- ==================== 3. POSE MAPPER ==================== -->
+<div class="page-break"></div>
+<h2>3. PoseMapper — El Cerebro</h2>
+
+<p>
+El <strong>PoseMapper</strong> es el módulo central del sistema (archivo <code>pose_mapper.py</code>, ~700 líneas).
+Convierte los 21 landmarks 3D de MediaPipe en 6 valores PWM para los servos.
+</p>
+
+<h3>3.1 Pipeline por frame</h3>
+
+<pre>
+landmarks (21×3D) + wrist_angle + handedness
+    ↓  1. Validación (21 landmarks con x, y, z)
+    ↓  2. Cálculo PWM por dedo
+    │      └─ Thumb: comparación eje X (TIP vs IP)
+    │      └─ Dedos largos: ángulo 3D en articulación PIP
+    │      └─ Wrist: detección de rotación por profundidad Z
+    ↓  3. Deadband (ignora cambios &lt; 15 µs → evita micro-oscilaciones)
+    ↓  4. Rate limit (máx ±60 µs/frame → protección mecánica)
+    ↓  5. Clamp a límites seguros por dedo
+    →  [thumb, index, middle, ring, pinky, wrist] en µs
+</pre>
+
+<h3>3.2 Algoritmo de dedos largos</h3>
+
+<p>Para los dedos índice, corazón, anular y meñique se calcula el <strong>ángulo 3D en la articulación PIP</strong>:</p>
+
+<pre>
+flexion = joint_angle_3D(landmarks, MCP, PIP, TIP)
+         ↓
+raw = (180° - flexion) × sensibilidad × 1.5
+         ↓
+PWM = lerp(raw, open_pwm, closed_pwm)
+</pre>
+
+<p>Un dedo recto da ~180° de ángulo → raw bajo → PWM de abierto.
+Un dedo flexionado da ~0° → raw alto → PWM de cerrado.</p>
+
+<h3>3.3 Pulgar</h3>
+
+<p>El pulgar usa una estrategia diferente basada en la diferencia de coordenada X entre la punta (TIP) y la articulación media (IP):</p>
+
+<pre>
+x_diff = thumb_tip.x - thumb_ip.x
+         ↓
+normalized = clamp((x_diff + 0.01) / 0.02, 0, 1)
+         ↓
+PWM = closed_pwm + (open_pwm - closed_pwm) × normalized
+</pre>
+
+<p>El parámetro <code>handedness</code> ('Left' o 'Right') invierte la lógica según la mano detectada.</p>
+
+<h3>3.4 Muñeca (rotación)</h3>
+
+<p>La muñeca detecta <strong>rotación</strong> de la mano (no flexión vertical) mediante la diferencia de profundidad Z entre los MCP del índice y el meñique:</p>
+
+<pre>
+z_diff = landmarks[INDEX_MCP].z - landmarks[PINKY_MCP].z
+         ↓
+wrist_raw = clamp((z_diff + 0.04) / 0.08, 0, 1)
+         ↓
+PWM = closed_pwm + (open_pwm - closed_pwm) × wrist_raw
+</pre>
+
+<p>Incluye auto-calibración en vivo: observa el rango mínimo/máximo real y lo estira al rango completo.</p>
+
+<!-- ==================== 4. FIRMWARE ==================== -->
+<h2>4. Firmware del Mega 2560</h2>
+
+<p>El firmware (<code>mega_servos.ino</code>, 453 líneas) se encarga de recibir comandos por USB, mover los servos con suavidad y vigilar que la comunicación no se caiga.</p>
+
+<h3>4.1 Protocolo serie</h3>
+
+<table>
+  <tr><th>Comando</th><th>Formato</th><th>Ejemplo</th><th>Descripción</th></tr>
+  <tr><td><strong>Finger</strong></td><td><code>F&lt;idx&gt; &lt;pwm_us&gt;\n</code></td><td><code>F0 1500\n</code></td><td>Posiciona servo &lt;idx&gt; al ancho de pulso &lt;pwm_us&gt;</td></tr>
+  <tr><td><strong>Heartbeat</strong></td><td><code>H\n</code></td><td><code>H\n</code></td><td>Keep‑alive cada 500ms desde Flask</td></tr>
+  <tr><td><strong>ACK</strong></td><td><code>OK\n</code></td><td><code>OK\n</code></td><td>Respuesta del Mega a un Heartbeat</td></tr>
+  <tr><td><strong>Debug</strong></td><td><code>D\n</code></td><td><code>D\n</code></td><td>Toggle modo debug por USB</td></tr>
+</table>
+
+<h3>4.2 Parser por máquina de estados</h3>
+
+<p>El parser usa un autómata de 3 estados sin memoria dinámica (buffer estático de 16 bytes):</p>
+
+<pre>
+WAITING_F  → esperando 'F' (comando) o 'H' (heartbeat)
+READY_IDX  → 'F' recibido, esperando dígito del índice (0-5)
+READY_PWM  → índice recibido, acumulando dígitos del PWM
+</pre>
+
+<p>El heartbeat (<code>H</code>) se procesa en <strong>cualquier estado</strong> para garantizar robustez.</p>
+
+<h3>4.3 Interpolación trapezoidal</h3>
+
+<p>El movimiento de los servos se suaviza con un perfil de velocidad trapezoidal:</p>
+
+<pre>
+Velocidad (µs/paso)
+    ↑
+MAX ──────╱╲──────────    ← Crucero (8 µs/paso)
+   ╱╲    ╱  ╲    ╱╲
+  ╱  ╲  ╱    ╲  ╱  ╲
+ ╱    ╲╱      ╲╱    ╲
+─┴──────┴──────┴──────┴──→ Distancia
+  Acel.   Crucero   Decel.
+</pre>
+
+<p>La distancia de frenado se calcula con <code>d = v² / (2·a)</code>, donde <code>v</code> es la velocidad actual y <code>a = 2 µs/paso²</code>.</p>
+
+<h3>4.4 Watchdog de seguridad</h3>
+
+<p>Si no se recibe ningún comando (F o H) durante <strong>2500 ms</strong>, el Mega lleva todos los servos a <strong>safe pose (1300 µs)</strong> automáticamente. Esto protege el brazo si el UNO Q se cuelga o se pierde la comunicación.</p>
+
+<!-- ==================== 5. SEGURIDAD ==================== -->
+<div class="page-break"></div>
+<h2>5. Seguridad</h2>
+
+<h3>5.1 Doble capa de protección</h3>
+
+<table>
+  <tr><th>Capa</th><th>Mecanismo</th><th>Respuesta</th></tr>
+  <tr><td><strong>Software</strong></td><td>PoseMapper valida landmarks</td><td>Si inválidos → safe pose (open_pwm por dedo)</td></tr>
+  <tr><td><strong>Red</strong></td><td>WebSocket handler</td><td>Al desconectar cliente → cada servo a open_pwm</td></tr>
+  <tr><td><strong>Firmware</strong></td><td>Watchdog en Mega 2560</td><td>2.5s sin heartbeat → 1300 µs en todos</td></tr>
+  <tr><td><strong>Mecánica</strong></td><td>Límites PWM por dedo</td><td>pwm_min/pwm_max en servo_calibration.yaml</td></tr>
+</table>
+
+<h3>5.2 Límites calibrados</h3>
+
+<table>
+  <tr><th>Servo</th><th>Límite mínimo</th><th>Límite máximo</th><th>Rango de trabajo</th></tr>
+  <tr><td>Pulgar</td><td>700 µs</td><td>2100 µs</td><td>800–2000 µs</td></tr>
+  <tr><td>Índice</td><td>500 µs</td><td>2100 µs</td><td>600–2000 µs</td></tr>
+  <tr><td>Corazón</td><td>500 µs</td><td>1800 µs</td><td>600–1700 µs</td></tr>
+  <tr><td>Anular</td><td>500 µs</td><td>2000 µs</td><td>600–1900 µs</td></tr>
+  <tr><td>Meñique</td><td>500 µs</td><td>2000 µs</td><td>600–1900 µs</td></tr>
+  <tr><td>Muñeca</td><td>700 µs</td><td>2000 µs</td><td>600–2000 µs</td></tr>
+</table>
+
+<h3>5.3 Aislamiento eléctrico</h3>
+
+<p>El UNO Q (cerebro Linux) está aislado eléctricamente del Mega (potencia). Los picos de corriente de los servos (hasta 2 A en stall) nunca afectan al Linux. La comunicación es por USB OTG, lo que proporciona aislamiento galvánico parcial.</p>
+
+<!-- ==================== 6. DATOS TÉCNICOS ==================== -->
+<h2>6. Datos Técnicos</h2>
+
+<table>
+  <tr><th>Parámetro</th><th>Valor</th></tr>
+  <tr><td>Grados de libertad</td><td>6 (5 dedos + muñeca)</td></tr>
+  <tr><td>Actuadores</td><td>Tower Pro MG996R ×6 (2 A stall c/u)</td></tr>
+  <tr><td>Frecuencia de tracking</td><td>~20–30 FPS</td></tr>
+  <tr><td>Latencia extremo a extremo</td><td>~80–150 ms</td></tr>
+  <tr><td>Resolución de cámara</td><td>640 × 480 px</td></tr>
+  <tr><td>Baudrate USB OTG</td><td>115200 bps</td></tr>
+  <tr><td>Protocolo de comunicación</td><td>WebSocket + Serial ASCII</td></tr>
+  <tr><td>Alimentación servos</td><td>5 V / 10 A+ (externa)</td></tr>
+  <tr><td>Alimentación UNO Q</td><td>6.5–12 V / 2 A (VIN)</td></tr>
+</table>
+
+<!-- ==================== 7. ACCESO ==================== -->
+<h2>7. Acceso al Sistema</h2>
+
+<table>
+  <tr><th>Método</th><th>URL</th><th>Descripción</th></tr>
+  <tr><td>🌍 <strong>Web</strong></td><td><code>https://brazo.nxserve.org</code></td><td>Acceso principal vía Cloudflare Tunnel</td></tr>
+  <tr><td>🏠 Local</td><td><code>http://brazorobotico.local:3000</code></td><td>mDNS en red local</td></tr>
+  <tr><td>🔐 SSH</td><td><code>ssh arduino@brazorobotico.local</code></td><td>pass: arduino</td></tr>
+  <tr><td>🩺 Healthcheck</td><td><code>https://brazo.nxserve.org/api/health</code></td><td>Estado del sistema en JSON</td></tr>
+</table>
+
+<!-- ==================== 8. INSTALACIÓN ==================== -->
+<h2>8. Instalación Rápida</h2>
+
+<pre>
+# Requisitos: Node.js ≥ 18, Python ≥ 3.10, Arduino IDE 2.0+
+
+# 1. Clonar y construir frontend
+git clone &lt;repo&gt; && cd BrazoRoboticoV2
+cd frontend && npm install && npm run build && cd ..
+
+# 2. Instalar backend (en UNO Q)
+cd backend
+pip install -r ../deploy/requirements.txt
+
+# 3. Servicios systemd (en UNO Q)
+sudo cp deploy/systemd/socat-mega.service /etc/systemd/system/
+sudo cp deploy/systemd/robot-hand.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now socat-mega.service robot-hand.service
+
+# 4. Firmware Mega 2560
+# Abrir firmware/mega_servos/mega_servos.ino en Arduino IDE
+# Seleccionar placa: Arduino Mega 2560
+# Upload (Ctrl+U)
+
+# 5. Firmware STM32 (LED Matrix)
+# Abrir firmware/stm32/bridge.ino en Arduino IDE
+# Seleccionar placa: Arduino UNO Q (ABX00162)
+# Upload via USB nativo
+</pre>
+
+<!-- ==================== 9. CONCLUSIÓN ==================== -->
+<div class="page-break"></div>
+<h2>9. Conclusión</h2>
+
+<p>
+El Brazo Robótico V2 demuestra cómo integrar tecnologías web modernas (React, MediaPipe, WebSocket) con sistemas embebidos (Arduino UNO Q, Mega 2560) para crear un sistema de control gestual en tiempo real.
+</p>
+
+<p>
+La arquitectura elegida —con el UNO Q como cerebro Linux y el Mega como controlador PWM— proporciona un equilibrio óptimo entre capacidad de procesamiento y control de hardware. La migración a USB OTG simplificó significativamente la comunicación, eliminando la dependencia del STM32 como bridge intermedio.
+</p>
+
+<p>
+El sistema es accesible desde cualquier lugar gracias al túnel Cloudflare, permitiendo demostraciones remotas sin necesidad de configurar redes complejas.
+</p>
+
+<div class="success">
+  <strong>✅ Estado actual:</strong> Sistema completamente operativo. Todos los dedos calibrados físicamente.
+  Demo en vivo: <a href="https://brazo.nxserve.org">https://brazo.nxserve.org</a>
+</div>
+
+<h3>Mejoras futuras</h3>
+<ul>
+  <li>Calibración de muñeca para que el mapeo rotacional coincida con el rango físico.</li>
+  <li>Implementar grabación y reproducción de secuencias (ya incluido en el frontend).</li>
+  <li>Migrar Flask a un servidor WSGI de producción (Waitress/Gunicorn).</li>
+  <li>Añadir certificados SSL para HTTPS local (actualmente solo por Cloudflare).</li>
+  <li>Tests unitarios para pose_mapper.py (el módulo core no tiene tests).</li>
+</ul>
+
+<!-- ==================== 10. FIRMWARE ==================== -->
+<h2>10. Constantes del firmware</h2>
+
+<table>
+  <tr><th>Constante</th><th>Valor</th><th>Descripción</th></tr>
+  <tr><td><code>NUM_SERVOS</code></td><td>6</td><td>Número de servos</td></tr>
+  <tr><td><code>SERIAL_BAUD</code></td><td>115200</td><td>Velocidad USB OTG</td></tr>
+  <tr><td><code>PWM_MIN_US</code></td><td>500 µs</td><td>Límite inferior hardware MG996R</td></tr>
+  <tr><td><code>PWM_MAX_US</code></td><td>2500 µs</td><td>Límite superior hardware MG996R</td></tr>
+  <tr><td><code>PWM_CENTER_US</code></td><td>1300 µs</td><td>Safe pose / centro calibrado</td></tr>
+  <tr><td><code>HEARTBEAT_TIMEOUT_MS</code></td><td>2500 ms</td><td>Timeout watchdog Mega</td></tr>
+  <tr><td><code>STEP_INTERVAL_MS</code></td><td>10 ms</td><td>Paso de interpolación trapezoidal</td></tr>
+  <tr><td><code>MAX_SPEED</code></td><td>8 µs/paso</td><td>Velocidad máxima de servo</td></tr>
+  <tr><td><code>ACCEL_STEP</code></td><td>2 µs/paso²</td><td>Aceleración/desaceleración</td></tr>
+</table>
+
+<h2>11. Estructura del repositorio</h2>
+
+<pre>
+BrazoRoboticoV2/
+├── backend/                  # Python: Flask + PoseMapper + SerialManager
+│   ├── server.py             # Orquestador HTTP/WebSocket
+│   ├── pose_mapper.py        # ★ Core: landmarks 3D → PWM (700 líneas)
+│   ├── serial_manager.py     # Comunicación TCP con SOCAT
+│   ├── config/               # YAMLs: calibración, tracking, red
+│   └── static/               # Build del frontend React
+├── frontend/                 # React 18 + TypeScript + Vite
+│   └── src/components/       # CameraView, Hands3D, ServoPanel, etc.
+├── firmware/
+│   ├── mega_servos/          # ★ Firmware activo del Mega 2560
+│   │   └── mega_servos.ino
+│   └── stm32/                # Firmware STM32 (LED Matrix)
+│       └── bridge.ino
+├── deploy/                   # Instalación y servicios
+│   ├── systemd/              # socat-mega.service, robot-hand.service
+│   ├── udev/                 # Reglas USB
+│   └── requirements.txt      # Dependencias Python
+├── docs/                     # Documentación
+│   ├── CONTEXT.md            # Glosario (ubiquitous language)
+│   └── adr/                  # Architecture Decision Records
+└── tests/                    # Tests unitarios
+    └── test_serial_manager.py
+</pre>
+
+
+<!-- ==================== FOOTER ==================== -->
+<div class="footer">
+  <p>
+    <strong>Brazo Robótico V2</strong> · Proyecto Final de Grado Superior en Electrónica ·
+    IES Virgen de la Encina · Ponferrada · Mayo 2026
+  </p>
+  <p>
+    Repositorio: <a href="https://github.com/fxMT-nx/BrazoRoboticoV2">github.com/fxMT-nx/BrazoRoboticoV2</a> ·
+    Demo: <a href="https://brazo.nxserve.org">brazo.nxserve.org</a>
+  </p>
+  <p>Licencia MIT · Hecho con ❤️ y muchas horas de debugging</p>
+</div>
+
+</body>
+</html>
